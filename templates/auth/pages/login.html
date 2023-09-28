@@ -1,0 +1,14 @@
+{{ template "layout.html" . }}
+
+{{ define "title" }}
+	Login
+{{ end }}
+
+{{ define "content" }}
+	<form method="POST" action="/auth/login">
+		<input type="email" name="email" placeholder="Email">
+		<input type="password" name="password" placeholder="Password">
+	
+		<button>Login</button>
+	</form>
+{{ end }}

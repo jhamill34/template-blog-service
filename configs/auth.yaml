@@ -1,0 +1,16 @@
+general:
+  server:
+    port: 3334
+  
+  database:
+    path: "./auth.db"
+    migrations:
+      - "./migrations/auth/*.sql"
+  
+  template:
+    common: 
+      - "./templates/auth/components/*.html"
+    paths:
+      - "./templates/auth/pages/*.html"
+
+
