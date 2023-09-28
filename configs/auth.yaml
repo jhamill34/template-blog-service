@@ -1,3 +1,15 @@
+default_user:
+  username: "root"
+  email: "joshrasmussen34@gmail.com"
+  password: "password"
+
+password_config:
+  iterations: 3
+  memory: 32768
+  parallelism: 4
+  hash_length: 32
+  salt_length: 16
+
 general:
   server:
     port: 3334

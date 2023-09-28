@@ -1,7 +1,15 @@
 package main
 
-import "github.com/jhamill34/notion-provisioner/internal/app"
+import (
+	"os"
+
+	"github.com/jhamill34/notion-provisioner/internal/app"
+)
 
 func main() {
-	app.ConfigureApp().Start()
+	service := os.Args[1]
+	switch service {
+	case "auth":
+		app.ConfigureAuth().Start()
+	}
 }

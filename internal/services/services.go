@@ -8,6 +8,10 @@ import (
 
 type AuthService interface {
 	LoginUser(email string, password string) (*models.User, error)
+	GetUserByEmail(email string) (*models.User, error)
+	GetUserByUsername(username string) (*models.User, error)
+	CreateUser(username, email, password string) error
+	CreateRootUser(email, password string) error
 }
 
 type SessionService interface {

@@ -12,9 +12,9 @@ import (
 )
 
 type Auth struct {
-	server transport.Server
-	db     database.DatabaseProvider
-	cfg    config.AuthConfig
+	server  transport.Server
+	setup   func()
+	cleanup func()
 }
 
 func ConfigureAuth() *Auth {
@@ -29,29 +29,57 @@ func ConfigureAuth() *Auth {
 		NewTemplateRepository(cfg.General.Template.Common...).
 		AddTemplates(cfg.General.Template.Paths...)
 
+	sessionStore := session.NewInMemorySessionStore()
+
+	userDao := dao.NewUserDao(db)
+	authRepo := repositories.NewAuthRepository(userDao, cfg.PasswordConfig)
+
 	return &Auth{
 		server: transport.NewServer(
 			cfg.General.Server.Port,
 			routes.NewAuthRoutes(
-				repositories.NewAuthRepository(
-					dao.NewUserDao(db),
-				),
-				session.NewInMemorySessionStore(),
+				authRepo,
+				sessionStore,
+				templateRepository,
+			),
+			routes.NewOauthRoutes(
+				sessionStore,
 				templateRepository,
 			),
 		),
-		db:  db,
-		cfg: cfg,
+		cleanup: func() {
+			db.Close()
+		},
+		setup: func() {
+			err := database.Migrate(db, cfg.General.Database.Migrations)
+			if err != nil {
+				panic(err)
+			}
+
+			if cfg.DefaultUser != nil {
+				user, err := authRepo.GetUserByUsername("ROOT")
+				if err != nil {
+					panic(err)
+				}
+
+				if user == nil {
+					err = authRepo.CreateRootUser(
+						cfg.DefaultUser.Email,
+						cfg.DefaultUser.Password,
+					)
+					if err != nil {
+						panic(err)
+					}
+				}
+			}
+
+		},
 	}
 }
 
 func (a *Auth) Start() {
-	defer a.db.Close()
-
-	err := database.Migrate(a.db, a.cfg.General.Database.Migrations)
-	if err != nil {
-		panic(err)
-	}
+	a.setup()
+	defer a.cleanup()
 
 	a.server.Start()
 }

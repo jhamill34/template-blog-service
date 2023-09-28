@@ -1,7 +1,7 @@
 package dao
 
 import (
-	"log"
+	"database/sql"
 
 	"github.com/google/uuid"
 	"github.com/jhamill34/notion-provisioner/internal/database"
@@ -30,13 +30,41 @@ func (dao *UserDao) FindByEmail(email string) (*database.UserEntity, error) {
 			email = ?
 	`, email)
 
+	if err == sql.ErrNoRows {
+		return nil, database.NotFound
+	}
+
 	if err != nil {
-		log.Printf("Error scanning user: %v", err)
 		return nil, err
 	}
 
 	return &user, nil
 }
+
+func (dao *UserDao) FindByUsername(username string) (*database.UserEntity, error) {
+	db := dao.databaseProvider.Get()
+
+	var user database.UserEntity
+	err := db.Get(&user, `
+		SELECT 
+			id, name, email, hashed_password, created_at, updated_at 
+		FROM 
+			user 
+		WHERE 
+			name = ?
+	`, username)
+
+	if err == sql.ErrNoRows {
+		return nil, database.NotFound
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+}
+
 
 func (dao *UserDao) CreateUser(name, email, hashedPassword string) error {
 	db := dao.databaseProvider.Get()
