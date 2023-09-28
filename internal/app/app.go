@@ -1,6 +1,8 @@
 package app
 
 import (
+	"context"
+
 	"github.com/jhamill34/notion-provisioner/internal/transport"
 	"github.com/jhamill34/notion-provisioner/internal/transport/routes"
 )
@@ -18,6 +20,6 @@ func ConfigureApp() *App {
 	}
 }
 
-func (a *App) Start() {
-	a.server.Start()
+func (a *App) Start(ctx context.Context) {
+	a.server.Start(ctx)
 }

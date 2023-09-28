@@ -1,9 +1,13 @@
 package transport
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -48,15 +52,40 @@ func NewServer(
 	}
 }
 
-func (s *Server) Start() {
+func (s *Server) Start(ctx context.Context) {
 	server := http.Server{
 		Addr:    fmt.Sprintf(":%d", s.port),
 		Handler: s.router,
 	}
 
-	// TODO: Graceful shutdown
-	log.Printf("Server listening on port %d\n", s.port)
-	server.ListenAndServe()
+	shutdownSignal := handleShutdown(func() {
+		if err := server.Shutdown(ctx); err != nil {
+			log.Printf("Error shutting down server: %v\n", err)
+		}
+	})
 
-	log.Print("\n")
+	log.Printf("Server listening on port %d\n", s.port)
+	if err := server.ListenAndServe(); err == http.ErrServerClosed {
+		<-shutdownSignal
+	} else {
+		log.Printf("Error starting server: %v\n", err)
+	}
+
+	log.Println("Server has been shutdown")
+}
+
+func handleShutdown(onShutdownSignal func()) <-chan struct{} {
+	shutdown := make(chan struct{})
+
+	go func() {
+		shutdownSignal := make(chan os.Signal, 1)
+		signal.Notify(shutdownSignal, os.Interrupt, syscall.SIGTERM)
+		<-shutdownSignal
+
+		onShutdownSignal()
+
+		close(shutdown)
+	}()
+
+	return shutdown
 }

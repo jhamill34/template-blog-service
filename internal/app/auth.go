@@ -1,6 +1,8 @@
 package app
 
 import (
+	"context"
+
 	"github.com/jhamill34/notion-provisioner/internal/config"
 	"github.com/jhamill34/notion-provisioner/internal/database"
 	"github.com/jhamill34/notion-provisioner/internal/database/dao"
@@ -77,9 +79,9 @@ func ConfigureAuth() *Auth {
 	}
 }
 
-func (a *Auth) Start() {
+func (a *Auth) Start(ctx context.Context) {
 	a.setup()
 	defer a.cleanup()
 
-	a.server.Start()
+	a.server.Start(ctx)
 }

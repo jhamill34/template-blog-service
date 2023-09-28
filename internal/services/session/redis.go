@@ -1,6 +1,9 @@
 package session
 
-import "github.com/redis/go-redis/v9"
+import (
+	"github.com/jhamill34/notion-provisioner/internal"
+	"github.com/redis/go-redis/v9"
+)
 
 type RedisSessionStore struct {
 	redisClient *redis.Client
@@ -8,22 +11,23 @@ type RedisSessionStore struct {
 
 func NewRedisSessionStore(redisClient *redis.Client) *RedisSessionStore {
 	return &RedisSessionStore{
-
+		redisClient: redisClient,
 	}
 }
 
 // Create implements services.SessionService.
-func (*RedisSessionStore) Create(data interface{}) string {
-	panic("unimplemented")
+func (self *RedisSessionStore) Create(data interface{}) string {
+	id := internal.GenerateId(256)
+	return id
 }
 
 // Destroy implements services.SessionService.
-func (*RedisSessionStore) Destroy(id string) {
+func (self *RedisSessionStore) Destroy(id string) {
 	panic("unimplemented")
 }
 
 // Find implements services.SessionService.
-func (*RedisSessionStore) Find(id string) (interface{}, error) {
+func (self *RedisSessionStore) Find(id string) (interface{}, error) {
 	panic("unimplemented")
 }
 
