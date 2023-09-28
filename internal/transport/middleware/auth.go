@@ -32,7 +32,7 @@ func (m *AuthorizeMiddleware) AuthorizeMiddleware(next http.Handler) http.Handle
 		}
 
 		sessionId := cookie.Value
-		sessionData, err := m.sessionService.Find(sessionId)
+		sessionData, err := m.sessionService.Find(r.Context(), sessionId)
 		if err != nil {
 			http.SetCookie(w, utils.ReturnToPostLoginCookie(r.URL.Path, 5))
 			http.Redirect(w, r, "/auth/login", http.StatusFound)

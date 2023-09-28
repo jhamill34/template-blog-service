@@ -85,8 +85,8 @@ func (self *AuthRoutes) ProcessLogin() http.HandlerFunc {
 		username := r.FormValue("email")
 		password := r.FormValue("password")
 
-		if user, err := self.authService.LoginUser(username, password); err == nil {
-			id := self.sessionService.Create(user)
+		if user, err := self.authService.LoginUser(r.Context(), username, password); err == nil {
+			id := self.sessionService.Create(r.Context(), user)
 
 			http.SetCookie(w, utils.SessionCookie(id, 60))
 			http.SetCookie(w, utils.ReturnToPostLoginCookie("", 0)) // Delete the cookie
@@ -112,7 +112,7 @@ func (self *AuthRoutes) Logout() http.HandlerFunc {
 			return
 		}
 
-		self.sessionService.Destroy(cookie.Value)
+		self.sessionService.Destroy(r.Context(), cookie.Value)
 		http.SetCookie(w, utils.SessionCookie("", 0))
 		http.Redirect(w, r, "/auth/login", http.StatusFound)
 	}

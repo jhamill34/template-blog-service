@@ -1,6 +1,7 @@
 package dao
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/google/uuid"
@@ -17,7 +18,7 @@ func NewUserDao(databaseProvider database.DatabaseProvider) *UserDao {
 	}
 }
 
-func (dao *UserDao) FindByEmail(email string) (*database.UserEntity, error) {
+func (dao *UserDao) FindByEmail(ctx context.Context, email string) (*database.UserEntity, error) {
 	db := dao.databaseProvider.Get()
 
 	var user database.UserEntity
@@ -41,7 +42,7 @@ func (dao *UserDao) FindByEmail(email string) (*database.UserEntity, error) {
 	return &user, nil
 }
 
-func (dao *UserDao) FindByUsername(username string) (*database.UserEntity, error) {
+func (dao *UserDao) FindByUsername(ctx context.Context, username string) (*database.UserEntity, error) {
 	db := dao.databaseProvider.Get()
 
 	var user database.UserEntity
@@ -66,7 +67,7 @@ func (dao *UserDao) FindByUsername(username string) (*database.UserEntity, error
 }
 
 
-func (dao *UserDao) CreateUser(name, email, hashedPassword string) error {
+func (dao *UserDao) CreateUser(ctx context.Context, name, email, hashedPassword string) error {
 	db := dao.databaseProvider.Get()
 
 	id := uuid.New().String()

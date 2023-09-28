@@ -15,8 +15,8 @@ import (
 
 type Auth struct {
 	server  transport.Server
-	setup   func()
-	cleanup func()
+	setup   func(ctx context.Context)
+	cleanup func(ctx context.Context)
 }
 
 func ConfigureAuth() *Auth {
@@ -49,23 +49,24 @@ func ConfigureAuth() *Auth {
 				templateRepository,
 			),
 		),
-		cleanup: func() {
+		cleanup: func(_ context.Context) {
 			db.Close()
 		},
-		setup: func() {
+		setup: func(ctx context.Context) {
 			err := database.Migrate(db, cfg.General.Database.Migrations)
 			if err != nil {
 				panic(err)
 			}
 
 			if cfg.DefaultUser != nil {
-				user, err := authRepo.GetUserByUsername("ROOT")
+				user, err := authRepo.GetUserByUsername(ctx, "ROOT")
 				if err != nil {
 					panic(err)
 				}
 
 				if user == nil {
 					err = authRepo.CreateRootUser(
+						ctx,
 						cfg.DefaultUser.Email,
 						cfg.DefaultUser.Password,
 					)
@@ -80,8 +81,8 @@ func ConfigureAuth() *Auth {
 }
 
 func (a *Auth) Start(ctx context.Context) {
-	a.setup()
-	defer a.cleanup()
+	a.setup(ctx)
+	defer a.cleanup(ctx)
 
 	a.server.Start(ctx)
 }

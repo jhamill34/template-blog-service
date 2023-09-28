@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/base64"
@@ -26,15 +27,18 @@ func NewAuthRepository(
 	passwordConfig *config.HashParams,
 ) *AuthRepository {
 	return &AuthRepository{
-		userDao: userDao,
+		userDao:        userDao,
 		passwordConfig: passwordConfig,
 	}
 }
 
 // LoginUser implements services.AuthService.
-func (repo *AuthRepository) LoginUser(email, password string) (*models.User, error) {
+func (repo *AuthRepository) LoginUser(
+	ctx context.Context,
+	email, password string,
+) (*models.User, error) {
 	password = strings.TrimSpace(password)
-	user, err := repo.userDao.FindByEmail(email)
+	user, err := repo.userDao.FindByEmail(ctx, email)
 
 	if err != nil {
 		return nil, err
@@ -56,11 +60,11 @@ func (repo *AuthRepository) LoginUser(email, password string) (*models.User, err
 	return nil, fmt.Errorf("Invalid User Credentials")
 }
 
-func (repo *AuthRepository) GetUserByEmail(email string) (*models.User, error) {
-	user, err := repo.userDao.FindByEmail(email)
+func (repo *AuthRepository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
+	user, err := repo.userDao.FindByEmail(ctx, email)
 
 	if err == database.NotFound {
-		return nil, nil 
+		return nil, nil
 	}
 
 	if err != nil {
@@ -74,11 +78,11 @@ func (repo *AuthRepository) GetUserByEmail(email string) (*models.User, error) {
 	}, nil
 }
 
-func (repo *AuthRepository) GetUserByUsername(username string) (*models.User, error) {
-	user, err := repo.userDao.FindByUsername(username)
+func (repo *AuthRepository) GetUserByUsername(ctx context.Context, username string) (*models.User, error) {
+	user, err := repo.userDao.FindByUsername(ctx, username)
 
 	if err == database.NotFound {
-		return nil, nil 
+		return nil, nil
 	}
 
 	if err != nil {
@@ -92,7 +96,7 @@ func (repo *AuthRepository) GetUserByUsername(username string) (*models.User, er
 	}, nil
 }
 
-func (repo *AuthRepository) CreateUser(username, email, password string) error {
+func (repo *AuthRepository) CreateUser(ctx context.Context, username, email, password string) error {
 	if username == ROOT_NAME {
 		return fmt.Errorf("Cannot create user with reserved name: %s", ROOT_NAME)
 	}
@@ -102,16 +106,16 @@ func (repo *AuthRepository) CreateUser(username, email, password string) error {
 		return err
 	}
 
-	return repo.userDao.CreateUser(username, email, encodedHash)
+	return repo.userDao.CreateUser(ctx, username, email, encodedHash)
 }
 
-func (repo *AuthRepository) CreateRootUser(email, password string) error {
+func (repo *AuthRepository) CreateRootUser(ctx context.Context, email, password string) error {
 	encodedHash, err := createHash(repo.passwordConfig, password)
 	if err != nil {
 		return err
 	}
 
-	return repo.userDao.CreateUser(ROOT_NAME, email, encodedHash)
+	return repo.userDao.CreateUser(ctx, ROOT_NAME, email, encodedHash)
 }
 
 func comparePasswords(password, encodedPassword string) (bool, error) {
@@ -167,7 +171,9 @@ func createHash(params *config.HashParams, password string) (string, error) {
 	), nil
 }
 
-func decodeHash(encodedPassword string) (params *config.HashParams, salt []byte, hash []byte, err error) {
+func decodeHash(
+	encodedPassword string,
+) (params *config.HashParams, salt []byte, hash []byte, err error) {
 	vals := strings.Split(encodedPassword, "$")
 
 	if len(vals) != 6 || vals[0] != "" || vals[1] != "argon2id" {
