@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 
+	"github.com/jhamill34/notion-provisioner/internal/config"
 	"github.com/jhamill34/notion-provisioner/internal/transport"
 	"github.com/jhamill34/notion-provisioner/internal/transport/routes"
 )
@@ -14,7 +15,7 @@ type App struct {
 func ConfigureApp() *App {
 	return &App{
 		transport.NewServer(
-			3333,
+			config.ServerConfig{},
 			routes.NewBlogRoutes(),
 		),
 	}

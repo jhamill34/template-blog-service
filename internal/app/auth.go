@@ -38,7 +38,7 @@ func ConfigureAuth() *Auth {
 
 	return &Auth{
 		server: transport.NewServer(
-			cfg.General.Server.Port,
+			cfg.General.Server,
 			routes.NewAuthRoutes(
 				authRepo,
 				sessionStore,

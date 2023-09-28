@@ -13,7 +13,10 @@ password_config:
 general:
   server:
     port: 3334
-  
+    idle_timeout: 60s
+    read_timeout: 1s
+    write_timeout: 2s
+ 
   database:
     path: "./auth.db"
     migrations:

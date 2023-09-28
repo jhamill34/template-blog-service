@@ -1,5 +1,7 @@
 package config
 
+import "time"
+
 type Configuration struct {
 	Server   ServerConfig   `yaml:"server"`
 	Database DatabaseConfig `yaml:"database"`
@@ -7,7 +9,10 @@ type Configuration struct {
 }
 
 type ServerConfig struct {
-	Port int `yaml:"port"`
+	Port         int `yaml:"port"`
+	IdleTimeout  time.Duration `yaml:"idle_timeout"`
+	ReadTimeout  time.Duration `yaml:"read_timeout"`
+	WriteTimeout time.Duration `yaml:"write_timeout"`
 }
 
 type DatabaseConfig struct {

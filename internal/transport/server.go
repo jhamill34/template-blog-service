@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httprate"
+	"github.com/jhamill34/notion-provisioner/internal/config"
 )
 
 type Router interface {
@@ -28,11 +29,11 @@ func mount(router *chi.Mux, routers ...Router) {
 
 type Server struct {
 	router *chi.Mux
-	port   int
+	cfg    config.ServerConfig
 }
 
 func NewServer(
-	port int,
+	cfg config.ServerConfig,
 	routers ...Router,
 ) Server {
 	router := chi.NewRouter()
@@ -48,14 +49,17 @@ func NewServer(
 
 	return Server{
 		router: router,
-		port:   port,
+		cfg:    cfg,
 	}
 }
 
 func (s *Server) Start(ctx context.Context) {
 	server := http.Server{
-		Addr:    fmt.Sprintf(":%d", s.port),
+		Addr:    fmt.Sprintf(":%d", s.cfg.Port),
 		Handler: s.router,
+		IdleTimeout: s.cfg.IdleTimeout,
+		ReadTimeout: s.cfg.ReadTimeout,
+		WriteTimeout: s.cfg.WriteTimeout,
 	}
 
 	shutdownSignal := handleShutdown(func() {
@@ -64,7 +68,7 @@ func (s *Server) Start(ctx context.Context) {
 		}
 	})
 
-	log.Printf("Server listening on port %d\n", s.port)
+	log.Printf("Server listening on port %d\n", s.cfg.Port)
 	if err := server.ListenAndServe(); err == http.ErrServerClosed {
 		<-shutdownSignal
 	} else {
