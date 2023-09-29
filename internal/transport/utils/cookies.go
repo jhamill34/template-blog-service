@@ -15,7 +15,7 @@ func ReturnToPostLoginCookie(location string, expires time.Duration) *http.Cooki
 		Secure:   true,
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
-		Expires:  time.Now().Add(expires * time.Minute),
+		Expires:  time.Now().Add(expires),
 	}
 }
 
@@ -29,6 +29,6 @@ func SessionCookie(id string, expires time.Duration) *http.Cookie {
 		Secure:   true,
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
-		Expires:  time.Now().Add(expires * time.Minute),
+		Expires:  time.Now().Add(expires),
 	}
 }

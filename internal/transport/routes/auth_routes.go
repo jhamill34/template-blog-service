@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jhamill34/notion-provisioner/internal/config"
 	"github.com/jhamill34/notion-provisioner/internal/models"
 	"github.com/jhamill34/notion-provisioner/internal/services"
 	"github.com/jhamill34/notion-provisioner/internal/transport/middleware"
@@ -11,19 +12,22 @@ import (
 )
 
 type AuthRoutes struct {
+	cfg             config.Configuration
 	authService     services.AuthService
 	sessionService  services.SessionService
 	templateService services.TemplateService
 }
 
 func NewAuthRoutes(
+	cfg config.Configuration,
 	authService services.AuthService,
 	sessionService services.SessionService,
 	templateService services.TemplateService,
 ) *AuthRoutes {
 	return &AuthRoutes{
-		authService:    authService,
-		sessionService: sessionService,
+		cfg:             cfg,
+		authService:     authService,
+		sessionService:  sessionService,
 		templateService: templateService,
 	}
 }
@@ -69,7 +73,6 @@ func (self *AuthRoutes) Index() http.HandlerFunc {
 	}
 }
 
-
 func (self *AuthRoutes) UserInfo() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user := r.Context().Value("user")
@@ -104,7 +107,7 @@ func (self *AuthRoutes) ProcessLogin() http.HandlerFunc {
 			}
 
 			// TODO: Add the cookie ttl to configuration
-			http.SetCookie(w, utils.SessionCookie(id, 60))
+			http.SetCookie(w, utils.SessionCookie(id, self.cfg.Session.CookieTTL))
 			http.SetCookie(w, utils.ReturnToPostLoginCookie("", 0)) // Delete the cookie
 
 			returnToCookie, err := r.Cookie(utils.RETURN_TO_COOKIE_NAME)
@@ -144,7 +147,6 @@ func (self *AuthRoutes) Home() http.HandlerFunc {
 	}
 }
 
-
 func (self *AuthRoutes) Register() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -177,7 +179,6 @@ func (self *AuthRoutes) ChangePasswordLoggedIn() http.HandlerFunc {
 	}
 }
 
-// TODO: Implement ME
 func (self *AuthRoutes) ProcessChangePasswordLoggedIn() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user := r.Context().Value("user").(*models.User)
@@ -191,7 +192,12 @@ func (self *AuthRoutes) ProcessChangePasswordLoggedIn() http.HandlerFunc {
 			return
 		}
 
-		err := self.authService.ChangePassword(r.Context(), user.UserId, currentPassword, newPassword)
+		err := self.authService.ChangePassword(
+			r.Context(),
+			user.UserId,
+			currentPassword,
+			newPassword,
+		)
 		if err != nil {
 			panic(err)
 		}
@@ -221,4 +227,3 @@ func (self *AuthRoutes) Invite() http.HandlerFunc {
 		w.WriteHeader(http.StatusOK)
 	}
 }
-
