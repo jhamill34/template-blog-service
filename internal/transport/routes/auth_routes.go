@@ -30,10 +30,13 @@ func NewAuthRoutes(
 
 func (r *AuthRoutes) Routes() (string, http.Handler) {
 	router := chi.NewRouter()
+	router.Use(middleware.NewAuthorizeMiddleware(r.sessionService))
+	router.Get("/logout", r.Logout())
+	router.Get("/verify", r.VerifyEmail())
 
 	router.Group(func(group chi.Router) {
+		group.Use(middleware.RedirectToHomeMiddleware)
 		group.Get("/", r.Index())
-		group.Get("/logout", r.Logout())
 		group.Get("/login", r.LoginPage())
 		group.Post("/login", r.ProcessLogin())
 
@@ -41,15 +44,13 @@ func (r *AuthRoutes) Routes() (string, http.Handler) {
 		group.Get("/register", r.Register())
 		group.Post("/register", r.ProcessRegister())
 
-		group.Get("/verify", r.VerifyEmail())
-
 		// TODO: Feature flag
 		group.Get("/forgot-password", r.ForgotPassword())
 		group.Post("/forgot-password", r.ProcessForgotPassword())
 	})
 
 	router.Group(func(group chi.Router) {
-		group.Use(middleware.NewAuthorizeMiddleware(r.sessionService))
+		group.Use(middleware.RedirectToLoginMiddleware)
 		group.Get("/userinfo", r.UserInfo())
 		group.Get("/home", r.Home())
 		group.Get("/change-password", r.ChangePasswordLoggedIn())

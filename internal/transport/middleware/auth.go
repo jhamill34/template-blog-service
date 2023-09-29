@@ -27,8 +27,7 @@ func (m *AuthorizeMiddleware) AuthorizeMiddleware(next http.Handler) http.Handle
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie(utils.SESSION_COOKIE_NAME)
 		if err != nil {
-			http.SetCookie(w, utils.ReturnToPostLoginCookie(r.URL.Path, 5))
-			http.Redirect(w, r, "/auth/login", http.StatusFound)
+			next.ServeHTTP(w, r)
 			return
 		}
 
@@ -37,13 +36,38 @@ func (m *AuthorizeMiddleware) AuthorizeMiddleware(next http.Handler) http.Handle
 		err = m.sessionService.Find(r.Context(), sessionId, &sessionData)
 		if err != nil {
 			http.SetCookie(w, utils.SessionCookie("", 0))
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), "user", &sessionData)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func RedirectToLoginMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := r.Context().Value("user")
+
+		if user == nil {
 			http.SetCookie(w, utils.ReturnToPostLoginCookie(r.URL.Path, 5))
 			http.Redirect(w, r, "/auth/login", http.StatusFound)
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), "user", &sessionData)
+		next.ServeHTTP(w, r)
+	})
+}
 
-		next.ServeHTTP(w, r.WithContext(ctx))
+func RedirectToHomeMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := r.Context().Value("user")
+
+		if user != nil {
+			http.Redirect(w, r, "/auth/home", http.StatusFound)
+			return
+		}
+
+		next.ServeHTTP(w, r)
 	})
 }
