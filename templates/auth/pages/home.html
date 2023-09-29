@@ -6,9 +6,24 @@ Home
 
 {{ define "content" }}
 
-{{ template "nav" . }}
-
-<div>
-	{{ .Name }}
+<div class="max-w-screen-lg m-auto p-8">
+	<div class="shadow rounded p-4 border-[1px] border-gray-400">
+		<header class="border-b border-gray-400 pb-4">
+			<div class="flex">
+				<div class="p-2 bg-gray-500/40 text-gray-500 rounded-full my-2 mr-4">
+					<div class="w-4 h-4 bg-current rounded-full"></div>
+				</div>
+				<div class="flex-1">
+					<div class="leading-6 font-bold">{{ .Email }}</div>
+					<div class="text-sm text-gray-500">{{ .Name }}</div>
+				</div>
+				<div>
+					<a href="/auth/change-password" class="p-2 border-[1px] border-gray-400 rounded shadow font-semibold transition-colors hover:bg-gray-400/10">Change Password</a>
+					<a href="/auth/logout" class="p-2 border-[1px] border-rose-400 rounded shadow font-semibold transition-colors bg-rose-200 hover:bg-rose-300">Logout</a>
+				</div>
+			</div>
+		</header>
+	</div>
 </div>
+
 {{ end }}

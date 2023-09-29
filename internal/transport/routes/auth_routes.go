@@ -52,7 +52,8 @@ func (r *AuthRoutes) Routes() (string, http.Handler) {
 		group.Use(middleware.NewAuthorizeMiddleware(r.sessionService))
 		group.Get("/userinfo", r.UserInfo())
 		group.Get("/home", r.Home())
-		group.Post("/change-password", r.ChangePasswordLoggedIn())
+		group.Get("/change-password", r.ChangePasswordLoggedIn())
+		group.Post("/change-password", r.ProcessChangePasswordLoggedIn())
 		group.Post("/invite", r.Invite())
 	})
 
@@ -165,10 +166,36 @@ func (self *AuthRoutes) VerifyEmail() http.HandlerFunc {
 	}
 }
 
-// TODO: Implement ME
 func (self *AuthRoutes) ChangePasswordLoggedIn() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		user := r.Context().Value("user").(*models.User)
+
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
+		self.templateService.Render(w, "change-password.html", "layout", user)
+	}
+}
+
+// TODO: Implement ME
+func (self *AuthRoutes) ProcessChangePasswordLoggedIn() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user := r.Context().Value("user").(*models.User)
+
+		currentPassword := r.FormValue("current_password")
+		newPassword := r.FormValue("new_password")
+		confirmPassword := r.FormValue("confirm_password")
+
+		if newPassword != confirmPassword {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		err := self.authService.ChangePassword(r.Context(), user.UserId, currentPassword, newPassword)
+		if err != nil {
+			panic(err)
+		}
+
+		http.Redirect(w, r, "/auth/home", http.StatusFound)
 	}
 }
 

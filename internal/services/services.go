@@ -13,6 +13,7 @@ type AuthService interface {
 	GetUserByUsername(ctx context.Context, username string) (*models.User, error)
 	CreateUser(ctx context.Context, username, email, password string) error
 	CreateRootUser(ctx context.Context, email, password string) error
+	ChangePassword(ctx context.Context, id, currentPassword, newPassword string) error
 }
 
 type SessionService interface {

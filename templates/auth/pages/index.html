@@ -7,14 +7,17 @@ Landing Page
 {{ define "content" }}
 <div class="w-screen flex justify-center">
 	<div class="border-[1px] border-gray-800 rounded p-4 m-4">
-		<h1 class="font-bold text-xl mb-2 p-2 border-b border-gray-800">Auth Landing Page</h1>
+		<h1 class="font-bold text-xl mb-4 p-2 border-b border-gray-800">Auth Landing Page</h1>
 		
-		<ul>
-			<li class="p-4 hover:bg-gray-800/10 transition-colors relative">
+		<ul class="flex flex-col gap-2 text-center">
+			<li class="p-4 hover:bg-gray-800/10 transition-colors relative border-[1px] border-gray-800 rounded">
 				<a href="/auth/login">Login<span class="absolute inset-0"/></a>
 			</li>
-			<li class="p-4 hover:bg-gray-800/10 transition-colors relative">
+			<li class="p-4 hover:bg-gray-800/10 transition-colors relative border-[1px] border-gray-800 rounded">
 				<a href="/auth/register">Register<span class="absolute inset-0"/></a>
+			</li>
+			<li class="p-4 hover:bg-gray-800/10 transition-colors relative border-[1px] border-gray-800 rounded">
+				<a href="/auth/home">Home<span class="absolute inset-0"/></a>
 			</li>
 		</ul>
 	</div>

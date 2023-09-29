@@ -18,6 +18,31 @@ func NewUserDao(databaseProvider database.DatabaseProvider) *UserDao {
 	}
 }
 
+func (dao *UserDao) FindById(ctx context.Context, id string) (*database.UserEntity, error) {
+	db := dao.databaseProvider.Get()
+
+	var user database.UserEntity
+	err := db.Get(&user, `
+		SELECT 
+			id, name, email, hashed_password, created_at, updated_at 
+		FROM 
+			user 
+		WHERE 
+			id = ?
+	`, id)
+
+	if err == sql.ErrNoRows {
+		return nil, database.NotFound
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+
 func (dao *UserDao) FindByEmail(ctx context.Context, email string) (*database.UserEntity, error) {
 	db := dao.databaseProvider.Get()
 
@@ -78,6 +103,22 @@ func (dao *UserDao) CreateUser(ctx context.Context, name, email, hashedPassword 
 		VALUES 
 			(?, ?, ?, ?)
 	`, id, name, email, hashedPassword)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (dao *UserDao) ChangePassword(ctx context.Context, id, hashedPassword string) error {
+	db := dao.databaseProvider.Get()
+
+	_, err := db.Exec(`
+		UPDATE user 
+		SET hashed_password = ?
+		WHERE id = ?
+	`, hashedPassword, id)
 
 	if err != nil {
 		return err

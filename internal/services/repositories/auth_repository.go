@@ -118,6 +118,29 @@ func (repo *AuthRepository) CreateRootUser(ctx context.Context, email, password 
 	return repo.userDao.CreateUser(ctx, ROOT_NAME, email, encodedHash)
 }
 
+func (repo *AuthRepository) ChangePassword(ctx context.Context, id, currentPassword, newPassword string) error {
+	user, err := repo.userDao.FindById(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	ok, err := comparePasswords(currentPassword, user.HashedPassword)
+	if err != nil {
+		return err
+	}
+	
+	if ok {
+		encodedHash, err := createHash(repo.passwordConfig, newPassword)
+		if err != nil {
+			return err
+		}
+
+		return repo.userDao.ChangePassword(ctx, id, encodedHash)
+	}
+
+	return fmt.Errorf("Invalid User Credentials")
+}
+
 func comparePasswords(password, encodedPassword string) (bool, error) {
 	params, salt, storedHash, err := decodeHash(encodedPassword)
 
