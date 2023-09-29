@@ -106,7 +106,6 @@ func (self *AuthRoutes) ProcessLogin() http.HandlerFunc {
 				panic(err)
 			}
 
-			// TODO: Add the cookie ttl to configuration
 			http.SetCookie(w, utils.SessionCookie(id, self.cfg.Session.CookieTTL))
 			http.SetCookie(w, utils.ReturnToPostLoginCookie("", 0)) // Delete the cookie
 
@@ -175,7 +174,7 @@ func (self *AuthRoutes) ChangePasswordLoggedIn() http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
-		self.templateService.Render(w, "change-password.html", "layout", user)
+		self.templateService.Render(w, "change_password.html", "layout", user)
 	}
 }
 
