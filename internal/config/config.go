@@ -6,7 +6,7 @@ type Configuration struct {
 	Server   ServerConfig   `yaml:"server"`
 	Database DatabaseConfig `yaml:"database"`
 	Template TemplateConfig `yaml:"template"`
-	Session  *SessionConfig `yaml:"session"`
+	Redis    RedisConfig   `yaml:"redis"`
 }
 
 type ServerConfig struct {
@@ -21,11 +21,9 @@ type DatabaseConfig struct {
 	Migrations []string `yaml:"migrations"`
 }
 
-type SessionConfig struct {
-	Addr      string        `yaml:"address"`
-	Password  string        `yaml:"password"`
-	TTL       time.Duration `yaml:"ttl"`
-	CookieTTL time.Duration `yaml:"cookie_ttl"`
+type RedisConfig struct {
+	Addr     string `yaml:"address"`
+	Password string `yaml:"password"`
 }
 
 type TemplateConfig struct {

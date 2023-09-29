@@ -13,20 +13,20 @@ import (
 )
 
 type AuthRoutes struct {
-	cfg             config.Configuration
+	sessionConfig   config.SessionConfig
 	authService     services.AuthService
 	sessionService  services.SessionService
 	templateService services.TemplateService
 }
 
 func NewAuthRoutes(
-	cfg config.Configuration,
+	sessionConfig config.SessionConfig,
 	authService services.AuthService,
 	sessionService services.SessionService,
 	templateService services.TemplateService,
 ) *AuthRoutes {
 	return &AuthRoutes{
-		cfg:             cfg,
+		sessionConfig:   sessionConfig,
 		authService:     authService,
 		sessionService:  sessionService,
 		templateService: templateService,
@@ -107,7 +107,7 @@ func (self *AuthRoutes) ProcessLogin() http.HandlerFunc {
 				panic(err)
 			}
 
-			http.SetCookie(w, utils.SessionCookie(id, self.cfg.Session.CookieTTL))
+			http.SetCookie(w, utils.SessionCookie(id, self.sessionConfig.CookieTTL))
 			http.SetCookie(w, utils.ReturnToPostLoginCookie("", 0)) // Delete the cookie
 
 			returnToCookie, err := r.Cookie(utils.RETURN_TO_COOKIE_NAME)
@@ -184,7 +184,19 @@ func (self *AuthRoutes) ProcessRegister() http.HandlerFunc {
 // TODO: Implement ME
 func (self *AuthRoutes) VerifyEmail() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
+		token := r.URL.Query().Get("token")
+
+		if token == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		err := self.authService.VerifyUser(r.Context(), token)
+		if err != nil {
+			panic(err)
+		}
+
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
 	}
 }
 

@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -23,6 +24,13 @@ type AuthConfig struct {
 	General        Configuration `yaml:"general"`
 	DefaultUser    *User         `yaml:"default_user"`
 	PasswordConfig *HashParams   `yaml:"password_config"`
+	Session 	   SessionConfig `yaml:"session"`
+	VerifyTTL      time.Duration `yaml:"verify_ttl"`
+}
+
+type SessionConfig struct {
+	TTL       time.Duration `yaml:"ttl"`
+	CookieTTL time.Duration `yaml:"cookie_ttl"`
 }
 
 func LoadAuthConfig(filename string) (AuthConfig, error) {

@@ -6,7 +6,7 @@ import (
 	"github.com/jhamill34/notion-provisioner/internal/config"
 	"github.com/jhamill34/notion-provisioner/internal/database"
 	"github.com/jhamill34/notion-provisioner/internal/database/dao"
-	"github.com/jhamill34/notion-provisioner/internal/services"
+	"github.com/jhamill34/notion-provisioner/internal/services/email"
 	"github.com/jhamill34/notion-provisioner/internal/services/repositories"
 	"github.com/jhamill34/notion-provisioner/internal/services/session"
 	"github.com/jhamill34/notion-provisioner/internal/transport"
@@ -32,25 +32,31 @@ func ConfigureAuth() *Auth {
 		NewTemplateRepository(cfg.General.Template.Common...).
 		AddTemplates(cfg.General.Template.Paths...)
 
-	var sessionStore services.SessionService
-	if cfg.General.Session != nil {
-		redisClient := redis.NewClient(&redis.Options{
-			Addr: cfg.General.Session.Addr,
-			Password: cfg.General.Session.Password,
-		})
-		sessionStore = session.NewRedisSessionStore(redisClient, cfg.General.Session.TTL)
-	} else {
-		sessionStore = session.NewInMemorySessionStore()
-	}
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     cfg.General.Redis.Addr,
+		Password: cfg.General.Redis.Password,
+	})
+
+	sessionStore := session.NewRedisSessionStore(redisClient, cfg.Session.TTL)
+	verifyTokenRepository := repositories.NewVerifyRegistrationTokenRepository(
+		redisClient,
+		cfg.VerifyTTL,
+	)
+	emailService := &email.MockEmailService{}
 
 	userDao := dao.NewUserDao(db)
-	authRepo := repositories.NewAuthRepository(userDao, cfg.PasswordConfig)
+	authRepo := repositories.NewAuthRepository(
+		userDao,
+		cfg.PasswordConfig,
+		verifyTokenRepository,
+		emailService,
+	)
 
 	return &Auth{
 		server: transport.NewServer(
 			cfg.General.Server,
 			routes.NewAuthRoutes(
-				cfg.General,
+				cfg.Session,
 				authRepo,
 				sessionStore,
 				templateRepository,

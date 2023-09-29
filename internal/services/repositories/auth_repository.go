@@ -12,23 +12,30 @@ import (
 	"github.com/jhamill34/notion-provisioner/internal/database"
 	"github.com/jhamill34/notion-provisioner/internal/database/dao"
 	"github.com/jhamill34/notion-provisioner/internal/models"
+	"github.com/jhamill34/notion-provisioner/internal/services"
 	"golang.org/x/crypto/argon2"
 )
 
 const ROOT_NAME = "ROOT"
 
 type AuthRepository struct {
-	userDao        *dao.UserDao
-	passwordConfig *config.HashParams
+	userDao            *dao.UserDao
+	passwordConfig     *config.HashParams
+	verifyTokenService services.VerifyTokenService
+	emailService       services.EmailService
 }
 
 func NewAuthRepository(
 	userDao *dao.UserDao,
 	passwordConfig *config.HashParams,
+	verifyTokenService services.VerifyTokenService,
+	emailService services.EmailService,
 ) *AuthRepository {
 	return &AuthRepository{
 		userDao:        userDao,
 		passwordConfig: passwordConfig,
+		verifyTokenService: verifyTokenService,
+		emailService:       emailService,
 	}
 }
 
@@ -58,9 +65,9 @@ func (repo *AuthRepository) LoginUser(
 	}
 
 	return &models.User{
-		UserId:   user.Id,
-		Name:     user.Name,
-		Email:    user.Email,
+		UserId: user.Id,
+		Name:   user.Name,
+		Email:  user.Email,
 	}, nil
 }
 
@@ -79,9 +86,9 @@ func (repo *AuthRepository) GetUserByEmail(
 	}
 
 	return &models.User{
-		UserId:   user.Id,
-		Name:     user.Name,
-		Email:    user.Email,
+		UserId: user.Id,
+		Name:   user.Name,
+		Email:  user.Email,
 	}, nil
 }
 
@@ -100,9 +107,9 @@ func (repo *AuthRepository) GetUserByUsername(
 	}
 
 	return &models.User{
-		UserId:   user.Id,
-		Name:     user.Name,
-		Email:    user.Email,
+		UserId: user.Id,
+		Name:   user.Name,
+		Email:  user.Email,
 	}, nil
 }
 
@@ -119,7 +126,17 @@ func (repo *AuthRepository) CreateUser(
 		return err
 	}
 
-	return repo.userDao.CreateUser(ctx, username, email, encodedHash, false)
+	userId, err := repo.userDao.CreateUser(ctx, username, email, encodedHash, false)
+	if err != nil {
+		return err
+	}
+
+	token, err := repo.verifyTokenService.Create(ctx, userId)
+	if err != nil {
+		return err
+	}
+
+	return repo.emailService.SendEmail(ctx, email, "Verify your email", token)
 }
 
 func (repo *AuthRepository) CreateRootUser(ctx context.Context, email, password string) error {
@@ -128,7 +145,8 @@ func (repo *AuthRepository) CreateRootUser(ctx context.Context, email, password 
 		return err
 	}
 
-	return repo.userDao.CreateUser(ctx, ROOT_NAME, email, encodedHash, true)
+	_, err = repo.userDao.CreateUser(ctx, ROOT_NAME, email, encodedHash, true)
+	return err
 }
 
 func (repo *AuthRepository) ChangePassword(
@@ -155,6 +173,16 @@ func (repo *AuthRepository) ChangePassword(
 	}
 
 	return fmt.Errorf("Invalid User Credentials")
+}
+
+func (repo *AuthRepository) VerifyUser(ctx context.Context, token string) error {
+	userId, err := repo.verifyTokenService.Verify(ctx, token)
+
+	if err != nil {
+		return err
+	}
+
+	return repo.userDao.VerifyUser(ctx, userId)
 }
 
 func comparePasswords(password, encodedPassword string) (bool, error) {

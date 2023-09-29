@@ -14,6 +14,7 @@ type AuthService interface {
 	CreateUser(ctx context.Context, username, email, password string) error
 	CreateRootUser(ctx context.Context, email, password string) error
 	ChangePassword(ctx context.Context, id, currentPassword, newPassword string) error
+	VerifyUser(ctx context.Context, token string) error
 }
 
 type SessionService interface {
@@ -25,3 +26,13 @@ type SessionService interface {
 type TemplateService interface {
 	Render(w io.Writer, template string, layout string, data interface{}) error
 }
+
+type EmailService interface {
+	SendEmail(ctx context.Context, to, subject, body string) error
+}
+
+type VerifyTokenService interface {
+	Verify(ctx context.Context, token string) (string, error)
+	Create(ctx context.Context, id string) (string, error)
+}
+

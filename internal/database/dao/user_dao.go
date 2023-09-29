@@ -97,7 +97,7 @@ func (dao *UserDao) CreateUser(
 	ctx context.Context,
 	name, email, hashedPassword string,
 	verified bool,
-) error {
+) (string, error) {
 	db := dao.databaseProvider.Get()
 
 	if _, err := dao.FindByEmail(ctx, email); err == database.NotFound {
@@ -110,12 +110,12 @@ func (dao *UserDao) CreateUser(
 	`, id, name, email, hashedPassword, verified)
 
 		if err != nil {
-			return err
+			return "", err
 		}
 
-		return nil
+		return id, nil
 	} else {
-		return database.Duplicate
+		return "", database.Duplicate
 	}
 }
 
@@ -127,6 +127,22 @@ func (dao *UserDao) ChangePassword(ctx context.Context, id, hashedPassword strin
 		SET hashed_password = ?
 		WHERE id = ?
 	`, hashedPassword, id)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (dao *UserDao) VerifyUser(ctx context.Context, id string) error {
+	db := dao.databaseProvider.Get()
+
+	_, err := db.ExecContext(ctx, `
+		UPDATE user 
+		SET verified = 1 
+		WHERE id = ?
+	`, id)
 
 	if err != nil {
 		return err

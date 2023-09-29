@@ -9,6 +9,12 @@ password_config:
   hash_length: 32
   salt_length: 16
 
+verify_ttl: 300s
+
+session:
+  ttl: 3600s 
+  cookie_ttl: 86400s 
+
 general:
   server:
     port: 3334
@@ -16,11 +22,9 @@ general:
     read_timeout: 1s
     write_timeout: 2s
 
-  session:
+  redis:
     address: auth-redis:6379
     password: password
-    ttl: 3600s 
-    cookie_ttl: 86400s 
  
   database:
     path: "auth-user:password@tcp(auth-mysql)/auth-db?parseTime=true&multiStatements=true"
