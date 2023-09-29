@@ -49,18 +49,25 @@ func (repo *AuthRepository) LoginUser(
 		return nil, err
 	}
 
-	if ok {
-		return &models.User{
-			UserId: user.Id,
-			Name:   user.Name,
-			Email:  user.Email,
-		}, nil
+	if !ok {
+		return nil, fmt.Errorf("Invalid User Credentials")
 	}
 
-	return nil, fmt.Errorf("Invalid User Credentials")
+	if !user.Verified {
+		return nil, fmt.Errorf("User is not verified")
+	}
+
+	return &models.User{
+		UserId:   user.Id,
+		Name:     user.Name,
+		Email:    user.Email,
+	}, nil
 }
 
-func (repo *AuthRepository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
+func (repo *AuthRepository) GetUserByEmail(
+	ctx context.Context,
+	email string,
+) (*models.User, error) {
 	user, err := repo.userDao.FindByEmail(ctx, email)
 
 	if err == database.NotFound {
@@ -72,13 +79,16 @@ func (repo *AuthRepository) GetUserByEmail(ctx context.Context, email string) (*
 	}
 
 	return &models.User{
-		UserId: user.Id,
-		Name:   user.Name,
-		Email:  user.Email,
+		UserId:   user.Id,
+		Name:     user.Name,
+		Email:    user.Email,
 	}, nil
 }
 
-func (repo *AuthRepository) GetUserByUsername(ctx context.Context, username string) (*models.User, error) {
+func (repo *AuthRepository) GetUserByUsername(
+	ctx context.Context,
+	username string,
+) (*models.User, error) {
 	user, err := repo.userDao.FindByUsername(ctx, username)
 
 	if err == database.NotFound {
@@ -90,13 +100,16 @@ func (repo *AuthRepository) GetUserByUsername(ctx context.Context, username stri
 	}
 
 	return &models.User{
-		UserId: user.Id,
-		Name:   user.Name,
-		Email:  user.Email,
+		UserId:   user.Id,
+		Name:     user.Name,
+		Email:    user.Email,
 	}, nil
 }
 
-func (repo *AuthRepository) CreateUser(ctx context.Context, username, email, password string) error {
+func (repo *AuthRepository) CreateUser(
+	ctx context.Context,
+	username, email, password string,
+) error {
 	if username == ROOT_NAME {
 		return fmt.Errorf("Cannot create user with reserved name: %s", ROOT_NAME)
 	}
@@ -106,7 +119,7 @@ func (repo *AuthRepository) CreateUser(ctx context.Context, username, email, pas
 		return err
 	}
 
-	return repo.userDao.CreateUser(ctx, username, email, encodedHash)
+	return repo.userDao.CreateUser(ctx, username, email, encodedHash, false)
 }
 
 func (repo *AuthRepository) CreateRootUser(ctx context.Context, email, password string) error {
@@ -115,10 +128,13 @@ func (repo *AuthRepository) CreateRootUser(ctx context.Context, email, password 
 		return err
 	}
 
-	return repo.userDao.CreateUser(ctx, ROOT_NAME, email, encodedHash)
+	return repo.userDao.CreateUser(ctx, ROOT_NAME, email, encodedHash, true)
 }
 
-func (repo *AuthRepository) ChangePassword(ctx context.Context, id, currentPassword, newPassword string) error {
+func (repo *AuthRepository) ChangePassword(
+	ctx context.Context,
+	id, currentPassword, newPassword string,
+) error {
 	user, err := repo.userDao.FindById(ctx, id)
 	if err != nil {
 		return err
@@ -128,7 +144,7 @@ func (repo *AuthRepository) ChangePassword(ctx context.Context, id, currentPassw
 	if err != nil {
 		return err
 	}
-	
+
 	if ok {
 		encodedHash, err := createHash(repo.passwordConfig, newPassword)
 		if err != nil {

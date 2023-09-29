@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jhamill34/notion-provisioner/internal/config"
+	"github.com/jhamill34/notion-provisioner/internal/database"
 	"github.com/jhamill34/notion-provisioner/internal/models"
 	"github.com/jhamill34/notion-provisioner/internal/services"
 	"github.com/jhamill34/notion-provisioner/internal/transport/middleware"
@@ -154,10 +155,29 @@ func (self *AuthRoutes) Register() http.HandlerFunc {
 	}
 }
 
-// TODO: Implement ME
 func (self *AuthRoutes) ProcessRegister() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
+		email := r.FormValue("email")
+		username := r.FormValue("username")
+		password := r.FormValue("password")
+		confirmPassword := r.FormValue("confirm_password")
+
+		if password != confirmPassword {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		err := self.authService.CreateUser(r.Context(), username, email, password)
+		if err == database.Duplicate {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		if err != nil {
+			panic(err)
+		}
+
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
 	}
 }
 

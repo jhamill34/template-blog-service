@@ -23,7 +23,7 @@ general:
     cookie_ttl: 86400s 
  
   database:
-    path: "auth-user:password@tcp(auth-mysql)/auth-db?parseTime=true"
+    path: "auth-user:password@tcp(auth-mysql)/auth-db?parseTime=true&multiStatements=true"
     migrations:
       - "./migrations/auth/*.sql"
   
