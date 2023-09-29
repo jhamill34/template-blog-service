@@ -16,9 +16,9 @@ type AuthService interface {
 }
 
 type SessionService interface {
-	Create(ctx context.Context, data interface{}) string
-	Destroy(ctx context.Context, id string)
-	Find(ctx context.Context, id string) (interface{}, error)
+	Create(ctx context.Context, data interface{}) (string, error)
+	Destroy(ctx context.Context, id string) error
+	Find(ctx context.Context, id string, data interface{}) error
 }
 
 type TemplateService interface {

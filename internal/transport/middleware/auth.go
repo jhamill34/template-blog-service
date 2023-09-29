@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/jhamill34/notion-provisioner/internal/models"
 	"github.com/jhamill34/notion-provisioner/internal/services"
 	"github.com/jhamill34/notion-provisioner/internal/transport/utils"
 )
@@ -31,15 +32,17 @@ func (m *AuthorizeMiddleware) AuthorizeMiddleware(next http.Handler) http.Handle
 			return
 		}
 
+		var sessionData models.User
 		sessionId := cookie.Value
-		sessionData, err := m.sessionService.Find(r.Context(), sessionId)
+		err = m.sessionService.Find(r.Context(), sessionId, &sessionData)
 		if err != nil {
+			http.SetCookie(w, utils.SessionCookie("", 0))
 			http.SetCookie(w, utils.ReturnToPostLoginCookie(r.URL.Path, 5))
 			http.Redirect(w, r, "/auth/login", http.StatusFound)
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), "user", sessionData)
+		ctx := context.WithValue(r.Context(), "user", &sessionData)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})

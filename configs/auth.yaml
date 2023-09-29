@@ -1,5 +1,4 @@
 default_user:
-  username: "root"
   email: "joshrasmussen34@gmail.com"
   password: "password"
 
@@ -16,9 +15,14 @@ general:
     idle_timeout: 60s
     read_timeout: 1s
     write_timeout: 2s
+
+  session:
+    address: auth-redis:6379
+    password: password
+    ttl: 3600s
  
   database:
-    path: "./auth.db"
+    path: "auth-user:password@tcp(auth-mysql)/auth-db?parseTime=true"
     migrations:
       - "./migrations/auth/*.sql"
   

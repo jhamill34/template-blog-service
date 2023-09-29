@@ -6,11 +6,12 @@ import (
 	"github.com/jhamill34/notion-provisioner/internal/config"
 	"github.com/jhamill34/notion-provisioner/internal/database"
 	"github.com/jhamill34/notion-provisioner/internal/database/dao"
+	"github.com/jhamill34/notion-provisioner/internal/services"
 	"github.com/jhamill34/notion-provisioner/internal/services/repositories"
 	"github.com/jhamill34/notion-provisioner/internal/services/session"
 	"github.com/jhamill34/notion-provisioner/internal/transport"
 	"github.com/jhamill34/notion-provisioner/internal/transport/routes"
-	_ "github.com/mattn/go-sqlite3"
+	"github.com/redis/go-redis/v9"
 )
 
 type Auth struct {
@@ -25,13 +26,22 @@ func ConfigureAuth() *Auth {
 		panic(err)
 	}
 
-	db := database.NewSqliteDbProvider(cfg.General.Database.Path)
+	db := database.NewMySQLDbProvider(cfg.General.Database.Path)
 
 	templateRepository := repositories.
 		NewTemplateRepository(cfg.General.Template.Common...).
 		AddTemplates(cfg.General.Template.Paths...)
 
-	sessionStore := session.NewInMemorySessionStore()
+	var sessionStore services.SessionService
+	if cfg.General.Session != nil {
+		redisClient := redis.NewClient(&redis.Options{
+			Addr: cfg.General.Session.Addr,
+			Password: cfg.General.Session.Password,
+		})
+		sessionStore = session.NewRedisSessionStore(redisClient, cfg.General.Session.TTL)
+	} else {
+		sessionStore = session.NewInMemorySessionStore()
+	}
 
 	userDao := dao.NewUserDao(db)
 	authRepo := repositories.NewAuthRepository(userDao, cfg.PasswordConfig)

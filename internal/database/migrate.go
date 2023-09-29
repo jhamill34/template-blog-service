@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -35,6 +36,7 @@ func resolveMigrations(globs []string) []migration {
 		}
 
 		for _, file := range files {
+			log.Println("Migration file", file)
 			base := filepath.Base(file)
 
 			result = append(result, migration{
@@ -129,18 +131,22 @@ func runMigrations(db *sqlx.DB, migrations []migration) error {
 
 	i++
 	for i < len(migrations) {
+		var queryFile *os.File
+		var query []byte
+		var tx *sql.Tx
+
 		migration := migrations[i]
-		queryFile, err := os.Open(migration.path)
+		queryFile, err = os.Open(migration.path)
 		if err != nil {
 			break
 		}
 
-		query, err := io.ReadAll(queryFile)
+		query, err = io.ReadAll(queryFile)
 		if err != nil {
 			break
 		}
 
-		tx, err := db.Begin()
+		tx, err = db.Begin()
 		if err != nil {
 			break
 		}
@@ -161,12 +167,14 @@ func runMigrations(db *sqlx.DB, migrations []migration) error {
 	}
 
 	lastSuccessful := i - 1
-	_, err = db.Exec(
-		`UPDATE migrations SET version = ? WHERE id = 1`,
-		migrations[lastSuccessful].version,
-	)
+	if lastSuccessful >= 0 {
+		_, err = db.Exec(
+			`UPDATE migrations SET version = ? WHERE id = 1`,
+			migrations[lastSuccessful].version,
+		)
+	}
 
-	if err == nil {
+	if err != nil {
 		return err
 	}
 

@@ -1,0 +1,61 @@
+version: '3'
+
+services:
+  auth-service:
+    build:
+      context: ../
+      dockerfile: build/auth/Dockerfile
+    ports:
+      - 3334:3334
+    networks:
+      - main
+    volumes:
+      - ../:/app
+    depends_on:
+      auth-mysql:
+        condition: service_healthy
+      auth-redis:
+        condition: service_healthy
+
+  auth-mysql:
+    image: mysql:latest
+    container_name: auth-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root-password
+      MYSQL_DATABASE: auth-db
+      MYSQL_USER: auth-user
+      MYSQL_PASSWORD: password
+    ports:
+      - "10003:3306"
+    networks:
+      - main
+    volumes:
+      - auth-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      timeout: 10s
+      retries: 10
+
+  auth-redis:
+    image: redis:latest
+    container_name: auth-redis
+    environment:
+      - REDIS_PASSWORD=password
+    ports:
+      - "6382:6379"
+    networks:
+      - main
+    volumes:
+      - auth-redis-data:/data
+    command: /bin/sh -c 'redis-server --appendonly yes --requirepass $${REDIS_PASSWORD}'
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+
+volumes:
+  auth-mysql-data:
+  auth-redis-data:
+
+networks:
+  main:
+    name: main
+    driver: bridge

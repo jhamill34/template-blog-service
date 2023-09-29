@@ -2,6 +2,8 @@ package database
 
 import (
 	"github.com/jmoiron/sqlx"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type SqliteDbProvider struct {

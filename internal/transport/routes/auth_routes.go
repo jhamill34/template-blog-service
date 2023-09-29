@@ -32,6 +32,7 @@ func (r *AuthRoutes) Routes() (string, http.Handler) {
 	router := chi.NewRouter()
 
 	router.Group(func(group chi.Router) {
+		group.Get("/", r.Index())
 		group.Get("/logout", r.Logout())
 		group.Get("/login", r.LoginPage())
 		group.Post("/login", r.ProcessLogin())
@@ -57,6 +58,15 @@ func (r *AuthRoutes) Routes() (string, http.Handler) {
 
 	return "/auth", router
 }
+
+func (self *AuthRoutes) Index() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		self.templateService.Render(w, "index.html", "layout", nil)
+	}
+}
+
 
 func (self *AuthRoutes) UserInfo() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -86,8 +96,12 @@ func (self *AuthRoutes) ProcessLogin() http.HandlerFunc {
 		password := r.FormValue("password")
 
 		if user, err := self.authService.LoginUser(r.Context(), username, password); err == nil {
-			id := self.sessionService.Create(r.Context(), user)
+			id, err := self.sessionService.Create(r.Context(), user)
+			if err != nil {
+				panic(err)
+			}
 
+			// TODO: Add the cookie ttl to configuration
 			http.SetCookie(w, utils.SessionCookie(id, 60))
 			http.SetCookie(w, utils.ReturnToPostLoginCookie("", 0)) // Delete the cookie
 

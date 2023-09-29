@@ -1,5 +1,5 @@
 create table if not exists user (
-	id text primary key not null,
+	id varchar(36) primary key not null,
 	name text not null,
 	email text not null,
 	hashed_password text not null,
