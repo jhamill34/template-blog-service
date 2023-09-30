@@ -50,6 +50,7 @@ func ConfigureAuth() *Auth {
 		cfg.PasswordConfig,
 		verifyTokenRepository,
 		emailService,
+		templateRepository,
 	)
 
 	return &Auth{

@@ -37,13 +37,15 @@ func (r *AuthRoutes) Routes() (string, http.Handler) {
 	router := chi.NewRouter()
 	router.Use(middleware.NewAuthorizeMiddleware(r.sessionService))
 	router.Get("/logout", r.Logout())
-	router.Get("/verify", r.VerifyEmail())
 
 	router.Group(func(group chi.Router) {
 		group.Use(middleware.RedirectToHomeMiddleware)
 		group.Get("/", r.Index())
 		group.Get("/login", r.LoginPage())
 		group.Post("/login", r.ProcessLogin())
+	
+		router.Get("/verify", r.VerifyEmail())
+		router.Get("/verify/resend", r.ResendEmail())
 
 		// TODO: Feature flag
 		group.Get("/register", r.Register())
@@ -181,7 +183,6 @@ func (self *AuthRoutes) ProcessRegister() http.HandlerFunc {
 	}
 }
 
-// TODO: Implement ME
 func (self *AuthRoutes) VerifyEmail() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		token := r.URL.Query().Get("token")
@@ -192,6 +193,26 @@ func (self *AuthRoutes) VerifyEmail() http.HandlerFunc {
 		}
 
 		err := self.authService.VerifyUser(r.Context(), token)
+		if err != nil {
+			panic(err)
+		}
+
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
+	}
+}
+
+func (self *AuthRoutes) ResendEmail() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		email := r.URL.Query().Get("email")
+
+		if email == "" {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.WriteHeader(http.StatusOK)
+			self.templateService.Render(w, "resend_email.html", "layout", nil)
+			return
+		}
+
+		err := self.authService.ResendVerifyEmail(r.Context(), email)
 		if err != nil {
 			panic(err)
 		}

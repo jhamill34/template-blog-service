@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/subtle"
@@ -23,6 +24,7 @@ type AuthRepository struct {
 	passwordConfig     *config.HashParams
 	verifyTokenService services.VerifyTokenService
 	emailService       services.EmailService
+	templateService    services.TemplateService
 }
 
 func NewAuthRepository(
@@ -30,12 +32,14 @@ func NewAuthRepository(
 	passwordConfig *config.HashParams,
 	verifyTokenService services.VerifyTokenService,
 	emailService services.EmailService,
+	templateService services.TemplateService,
 ) *AuthRepository {
 	return &AuthRepository{
-		userDao:        userDao,
-		passwordConfig: passwordConfig,
+		userDao:            userDao,
+		passwordConfig:     passwordConfig,
 		verifyTokenService: verifyTokenService,
 		emailService:       emailService,
+		templateService:    templateService,
 	}
 }
 
@@ -126,17 +130,44 @@ func (repo *AuthRepository) CreateUser(
 		return err
 	}
 
-	userId, err := repo.userDao.CreateUser(ctx, username, email, encodedHash, false)
+	user, err := repo.userDao.CreateUser(ctx, username, email, encodedHash, false)
 	if err != nil {
 		return err
 	}
 
-	token, err := repo.verifyTokenService.Create(ctx, userId)
+	return repo.sendVerifyEmail(ctx, user)
+}
+
+func (repo *AuthRepository) ResendVerifyEmail(
+	ctx context.Context,
+	email string,
+) error {
+	user, err := repo.userDao.FindByEmail(ctx, email)
 	if err != nil {
 		return err
 	}
 
-	return repo.emailService.SendEmail(ctx, email, "Verify your email", token)
+	return repo.sendVerifyEmail(ctx, user)
+}
+
+type RegisterEmailData struct {
+	Token string
+}
+
+func (repo *AuthRepository) sendVerifyEmail(
+	ctx context.Context,
+	user *database.UserEntity,
+) error {
+	token, err := repo.verifyTokenService.Create(ctx, user.Id)
+	if err != nil {
+		return err
+	}
+
+	buffer := bytes.Buffer{}
+	data := RegisterEmailData{ token }
+	repo.templateService.Render(&buffer, "register_email.html", "layout", data)
+
+	return repo.emailService.SendEmail(ctx, user.Email, "Verify your email", buffer.String())
 }
 
 func (repo *AuthRepository) CreateRootUser(ctx context.Context, email, password string) error {

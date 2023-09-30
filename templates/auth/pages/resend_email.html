@@ -1,0 +1,21 @@
+{{ template "layout.html" . }}
+
+{{ define "title" }}
+Resned Email 
+{{ end }}
+
+{{ define "content" }}
+<div class="flex justify-center">
+	<div class="flex-1 p-8 border-[1px] border-gray-500 rounded m-4 max-w-sm">
+		<h1 class="font-bold text-xl text-center mb-4 border-b border-gray-500 p-2">Resned Verification Email</h1>
+		<form method="GET" action="/auth/verify/resend">
+			<div class="text-sm mb-4 flex flex-col">
+				<label class="font-bold block" for="email">Email</label>
+				<input class="block rounded px-2 py-1 border-gray-500 focus:ring-0 focus:border-emerald-500" id="email" type="email" name="email" placeholder="Email" />
+			</div>
+
+			<button class="w-full bg-emerald-300 py-2 rounded font-bold border-[1px] border-gray-500">Submit</button>
+		</form>
+	</div>
+</div>
+{{ end }}

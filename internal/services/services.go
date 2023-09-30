@@ -15,6 +15,7 @@ type AuthService interface {
 	CreateRootUser(ctx context.Context, email, password string) error
 	ChangePassword(ctx context.Context, id, currentPassword, newPassword string) error
 	VerifyUser(ctx context.Context, token string) error
+	ResendVerifyEmail(ctx context.Context, email string) error
 }
 
 type SessionService interface {

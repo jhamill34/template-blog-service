@@ -97,7 +97,7 @@ func (dao *UserDao) CreateUser(
 	ctx context.Context,
 	name, email, hashedPassword string,
 	verified bool,
-) (string, error) {
+) (*database.UserEntity, error) {
 	db := dao.databaseProvider.Get()
 
 	if _, err := dao.FindByEmail(ctx, email); err == database.NotFound {
@@ -110,12 +110,18 @@ func (dao *UserDao) CreateUser(
 	`, id, name, email, hashedPassword, verified)
 
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
-		return id, nil
+		return &database.UserEntity{
+			Id:             id,
+			Name:           name,
+			Email:          email,
+			HashedPassword: hashedPassword,
+			Verified:       verified,
+		}, nil
 	} else {
-		return "", database.Duplicate
+		return nil, database.Duplicate
 	}
 }
 
