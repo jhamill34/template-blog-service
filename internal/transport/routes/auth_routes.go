@@ -43,7 +43,7 @@ func (r *AuthRoutes) Routes() (string, http.Handler) {
 		group.Get("/", r.Index())
 		group.Get("/login", r.LoginPage())
 		group.Post("/login", r.ProcessLogin())
-	
+
 		router.Get("/verify", r.VerifyEmail())
 		router.Get("/verify/resend", r.ResendEmail())
 
@@ -206,7 +206,7 @@ func (self *AuthRoutes) ResendEmail() http.HandlerFunc {
 		email := r.URL.Query().Get("email")
 
 		if email == "" {
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			eader().Set("Content-Type", "text/html; charset=utf-8")
 			w.WriteHeader(http.StatusOK)
 			self.templateService.Render(w, "resend_email.html", "layout", nil)
 			return

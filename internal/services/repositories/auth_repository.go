@@ -164,7 +164,7 @@ func (repo *AuthRepository) sendVerifyEmail(
 	}
 
 	buffer := bytes.Buffer{}
-	data := RegisterEmailData{ token }
+	data := RegisterEmailData{token}
 	repo.templateService.Render(&buffer, "register_email.html", "layout", data)
 
 	return repo.emailService.SendEmail(ctx, user.Email, "Verify your email", buffer.String())
