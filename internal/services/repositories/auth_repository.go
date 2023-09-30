@@ -147,6 +147,10 @@ func (repo *AuthRepository) ResendVerifyEmail(
 		return err
 	}
 
+	if user.Verified {
+		return fmt.Errorf("User is already verified")
+	}
+
 	return repo.sendVerifyEmail(ctx, user)
 }
 
