@@ -37,8 +37,6 @@ func (r *AuthRoutes) Routes() (string, http.Handler) {
 	router := chi.NewRouter()
 	router.Use(middleware.NewAuthorizeMiddleware(r.sessionService))
 	router.Get("/logout", r.Logout())
-	router.Get("/change-password", r.ChangePassword())
-	router.Post("/change-password", r.ProcessChangePassword())
 
 	router.Group(func(group chi.Router) {
 		group.Use(middleware.RedirectToHomeMiddleware)
@@ -62,6 +60,8 @@ func (r *AuthRoutes) Routes() (string, http.Handler) {
 		group.Use(middleware.RedirectToLoginMiddleware)
 		group.Get("/userinfo", r.UserInfo())
 		group.Get("/home", r.Home())
+		group.Get("/change-password", r.ChangePasswordLoggedIn())
+		group.Post("/change-password", r.ProcessChangePasswordLoggedIn())
 		group.Post("/invite", r.Invite())
 	})
 
@@ -221,33 +221,17 @@ func (self *AuthRoutes) ResendEmail() http.HandlerFunc {
 	}
 }
 
-type ChangePasswordModel struct {
-	Token string
-}
-
-func (self *AuthRoutes) ChangePassword() http.HandlerFunc {
+func (self *AuthRoutes) ChangePasswordLoggedIn() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		user := r.Context().Value("user")
+		user := r.Context().Value("user").(*models.User)
 
-		if user == nil {
-			token := r.URL.Query().Get("token")
-
-			model := ChangePasswordModel{
-				Token: token,
-			}
-
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.WriteHeader(http.StatusOK)
-			self.templateService.Render(w, "change_password.html", "layout", model)
-		} else {
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.WriteHeader(http.StatusOK)
-			self.templateService.Render(w, "change_password.html", "layout", user)
-		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		self.templateService.Render(w, "change_password.html", "layout", user)
 	}
 }
 
-func (self *AuthRoutes) ProcessChangePassword() http.HandlerFunc {
+func (self *AuthRoutes) ProcessChangePasswordLoggedIn() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user := r.Context().Value("user").(*models.User)
 
