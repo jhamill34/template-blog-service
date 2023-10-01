@@ -41,6 +41,7 @@ func ConfigureAuth() *Auth {
 	verifyTokenRepository := repositories.NewVerifyRegistrationTokenRepository(
 		redisClient,
 		cfg.VerifyTTL,
+		repositories.VerificationTypeRegistration,
 	)
 	emailService := &email.MockEmailService{}
 

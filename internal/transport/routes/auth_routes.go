@@ -37,6 +37,8 @@ func (r *AuthRoutes) Routes() (string, http.Handler) {
 	router := chi.NewRouter()
 	router.Use(middleware.NewAuthorizeMiddleware(r.sessionService))
 	router.Get("/logout", r.Logout())
+	router.Get("/change-password", r.ChangePassword())
+	router.Post("/change-password", r.ProcessChangePassword())
 
 	router.Group(func(group chi.Router) {
 		group.Use(middleware.RedirectToHomeMiddleware)
@@ -60,8 +62,6 @@ func (r *AuthRoutes) Routes() (string, http.Handler) {
 		group.Use(middleware.RedirectToLoginMiddleware)
 		group.Get("/userinfo", r.UserInfo())
 		group.Get("/home", r.Home())
-		group.Get("/change-password", r.ChangePasswordLoggedIn())
-		group.Post("/change-password", r.ProcessChangePasswordLoggedIn())
 		group.Post("/invite", r.Invite())
 	})
 
@@ -221,17 +221,33 @@ func (self *AuthRoutes) ResendEmail() http.HandlerFunc {
 	}
 }
 
-func (self *AuthRoutes) ChangePasswordLoggedIn() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		user := r.Context().Value("user").(*models.User)
+type ChangePasswordModel struct {
+	Token string
+}
 
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		self.templateService.Render(w, "change_password.html", "layout", user)
+func (self *AuthRoutes) ChangePassword() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user := r.Context().Value("user")
+
+		if user == nil {
+			token := r.URL.Query().Get("token")
+
+			model := ChangePasswordModel{
+				Token: token,
+			}
+
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.WriteHeader(http.StatusOK)
+			self.templateService.Render(w, "change_password.html", "layout", model)
+		} else {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.WriteHeader(http.StatusOK)
+			self.templateService.Render(w, "change_password.html", "layout", user)
+		}
 	}
 }
 
-func (self *AuthRoutes) ProcessChangePasswordLoggedIn() http.HandlerFunc {
+func (self *AuthRoutes) ProcessChangePassword() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user := r.Context().Value("user").(*models.User)
 
@@ -269,6 +285,12 @@ func (self *AuthRoutes) ForgotPassword() http.HandlerFunc {
 // TODO: Implement ME
 func (self *AuthRoutes) ProcessForgotPassword() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// email := r.FormValue("email")
+		// find user for email
+		// create a token 
+		// send an email with the token
+		// store token in redis and map to user id
+
 		w.WriteHeader(http.StatusOK)
 	}
 }
