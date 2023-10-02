@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jhamill34/notion-provisioner/internal/models"
 	"github.com/jhamill34/notion-provisioner/internal/services"
 	"github.com/jhamill34/notion-provisioner/internal/transport/middleware"
 )
@@ -48,7 +49,7 @@ func (self *OauthRoutes) CreateApplication() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
-		self.templateService.Render(w, "application_create.html", "layout", nil)
+		self.templateService.Render(w, "application_create.html", "layout", models.NewTemplateEmpty())
 	}
 }
 
@@ -62,7 +63,7 @@ func (self *OauthRoutes) GetApplication() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
-		self.templateService.Render(w, "application_detail.html", "layout", nil)
+		self.templateService.Render(w, "application_detail.html", "layout", models.NewTemplateEmpty())
 	}
 }
 
@@ -70,7 +71,7 @@ func (self *OauthRoutes) UpdateApplication() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
-		self.templateService.Render(w, "application_update.html", "layout", nil)
+		self.templateService.Render(w, "application_update.html", "layout", models.NewTemplateEmpty())
 	}
 }
 
@@ -90,7 +91,7 @@ func (self *OauthRoutes) ListApplications() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
-		self.templateService.Render(w, "application_list.html", "layout", nil)
+		self.templateService.Render(w, "application_list.html", "layout", models.NewTemplateEmpty())
 	}
 }
 

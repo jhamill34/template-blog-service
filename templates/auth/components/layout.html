@@ -14,7 +14,14 @@
 </head>
 
 <body>
-	{{ block "content" . }}{{ end }}
+	{{ block "notification" .Error }}
+		{{ if . }}
+			<div class="fixed inset-x-0 top-0 flex flex-col p-2 items-end gap-2">
+				<div class="p-2 leading-6 border-[1px] border-gray-800 bg-rose-400/40 font-bold">{{ .Message }}</div>
+			</div>
+		{{ end }}
+	{{ end }}
+	{{ block "content" .Data }}{{ end }}
 </body>
 
 </html>

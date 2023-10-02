@@ -75,6 +75,7 @@ func ConfigureAuth() *Auth {
 		server: transport.NewServer(
 			cfg.General.Server,
 			routes.NewAuthRoutes(
+				cfg.General.Notifications,
 				cfg.Session,
 				authRepo,
 				sessionStore,

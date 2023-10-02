@@ -10,3 +10,11 @@ type InviteData struct {
 	InvitedBy string `json:"invited_by"`
 	Email     string `json:"email"`
 }
+
+type Notifier interface {
+	Notify() *Notification
+}
+
+type Notification struct {
+	Message string `json:"message"`
+}

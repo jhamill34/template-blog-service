@@ -13,23 +13,26 @@ import (
 )
 
 type AuthRoutes struct {
-	sessionConfig   config.SessionConfig
-	authService     services.AuthService
-	sessionService  services.SessionService
-	templateService services.TemplateService
+	notificationConfig config.NotificationsConfig
+	sessionConfig      config.SessionConfig
+	authService        services.AuthService
+	sessionService     services.SessionService
+	templateService    services.TemplateService
 }
 
 func NewAuthRoutes(
+	notificationConfig config.NotificationsConfig,
 	sessionConfig config.SessionConfig,
 	authService services.AuthService,
 	sessionService services.SessionService,
 	templateService services.TemplateService,
 ) *AuthRoutes {
 	return &AuthRoutes{
-		sessionConfig:   sessionConfig,
-		authService:     authService,
-		sessionService:  sessionService,
-		templateService: templateService,
+		notificationConfig: notificationConfig,
+		sessionConfig:      sessionConfig,
+		authService:        authService,
+		sessionService:     sessionService,
+		templateService:    templateService,
 	}
 }
 
@@ -84,7 +87,7 @@ func (self *AuthRoutes) UserInfo() http.HandlerFunc {
 		} else {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.WriteHeader(http.StatusOK)
-			self.templateService.Render(w, "userinfo.html", "layout", user)
+			self.templateService.Render(w, "userinfo.html", "layout", models.NewTemplateData(user))
 		}
 	}
 }
@@ -93,7 +96,12 @@ func (self *AuthRoutes) LoginPage() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
-		self.templateService.Render(w, "login.html", "layout", nil)
+		self.templateService.Render(
+			w,
+			"login.html",
+			"layout",
+			models.NewTemplateError(utils.GetNotifications(r)),
+		)
 	}
 }
 
@@ -102,7 +110,9 @@ func (self *AuthRoutes) ProcessLogin() http.HandlerFunc {
 		username := r.FormValue("email")
 		password := r.FormValue("password")
 
-		if user, err := self.authService.LoginUser(r.Context(), username, password); err == nil {
+		user, err := self.authService.LoginUser(r.Context(), username, password)
+
+		if err == nil {
 			id, err := self.sessionService.Create(r.Context(), user)
 			if err != nil {
 				panic(err)
@@ -118,7 +128,7 @@ func (self *AuthRoutes) ProcessLogin() http.HandlerFunc {
 				http.Redirect(w, r, returnToCookie.Value, http.StatusFound)
 			}
 		} else {
-			// TODO: Flash to indicate failure
+			utils.SetNotifications(w, err, "/auth/login", self.notificationConfig.Timeout)
 			http.Redirect(w, r, "/auth/login", http.StatusFound)
 		}
 	}
@@ -144,7 +154,7 @@ func (self *AuthRoutes) Home() http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
-		self.templateService.Render(w, "home.html", "layout", user)
+		self.templateService.Render(w, "home.html", "layout", models.NewTemplateData(user))
 	}
 }
 
@@ -160,7 +170,12 @@ func (self *AuthRoutes) Register() http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
-		self.templateService.Render(w, "register.html", "layout", RegisterData{token, id})
+		self.templateService.Render(
+			w,
+			"register.html",
+			"layout",
+			models.NewTemplateData(RegisterData{token, id}),
+		)
 	}
 }
 
@@ -173,9 +188,14 @@ func (self *AuthRoutes) ProcessRegister() http.HandlerFunc {
 		token := r.FormValue("token")
 		id := r.FormValue("id")
 
-		ok, err := self.authService.VerifyInvite(r.Context(), id, token, func(claims *models.InviteData) bool {
-			return claims.Email == email
-		})
+		ok, err := self.authService.VerifyInvite(
+			r.Context(),
+			id,
+			token,
+			func(claims *models.InviteData) bool {
+				return claims.Email == email
+			},
+		)
 		if err != nil {
 			panic(err)
 		}
@@ -230,7 +250,7 @@ func (self *AuthRoutes) ResendEmail() http.HandlerFunc {
 		if email == "" {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.WriteHeader(http.StatusOK)
-			self.templateService.Render(w, "resend_email.html", "layout", nil)
+			self.templateService.Render(w, "resend_email.html", "layout", models.NewTemplateEmpty())
 			return
 		}
 
@@ -268,7 +288,12 @@ func (self *AuthRoutes) ChangePassword() http.HandlerFunc {
 			userId := r.URL.Query().Get("id")
 			data = changePasswordAnonymousData{TokenData: &tokenData{token, userId}, User: nil}
 		}
-		self.templateService.Render(w, "change_password.html", "layout", data)
+		self.templateService.Render(
+			w,
+			"change_password.html",
+			"layout",
+			models.NewTemplateData(data),
+		)
 	}
 }
 
@@ -322,7 +347,7 @@ func (self *AuthRoutes) ForgotPassword() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
-		self.templateService.Render(w, "forgot_password.html", "layout", nil)
+		self.templateService.Render(w, "forgot_password.html", "layout", models.NewTemplateEmpty())
 	}
 }
 
@@ -344,7 +369,7 @@ func (self *AuthRoutes) Invite() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
-		self.templateService.Render(w, "invite_user.html", "layout", nil)
+		self.templateService.Render(w, "invite_user.html", "layout", models.NewTemplateEmpty())
 	}
 }
 

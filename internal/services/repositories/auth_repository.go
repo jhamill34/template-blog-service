@@ -50,25 +50,29 @@ func NewAuthRepository(
 func (repo *AuthRepository) LoginUser(
 	ctx context.Context,
 	email, password string,
-) (*models.User, error) {
+) (*models.User, *services.AuthServiceError) {
 	password = strings.TrimSpace(password)
 	user, err := repo.userDao.FindByEmail(ctx, email)
 
+	if err == database.NotFound {
+		return nil, services.InvalidPassword
+	}
+
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
 	ok, err := comparePasswords(password, user.HashedPassword)
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
 	if !ok {
-		return nil, fmt.Errorf("Invalid User Credentials")
+		return nil, services.InvalidPassword
 	}
 
 	if !user.Verified {
-		return nil, fmt.Errorf("User is not verified")
+		return nil, services.UnverifiedUser
 	}
 
 	return &models.User{
@@ -173,7 +177,7 @@ func (repo *AuthRepository) sendVerifyEmail(
 
 	buffer := bytes.Buffer{}
 	data := EmailWithTokenData{token, user.Id}
-	repo.templateService.Render(&buffer, "register_email.html", "layout", data)
+	repo.templateService.Render(&buffer, "register_email.html", "layout", models.NewTemplateData(data))
 
 	return repo.emailService.SendEmail(ctx, user.Email, "Verify your email", buffer.String())
 }
@@ -251,7 +255,7 @@ func (repo *AuthRepository) CreateForgotPasswordToken(ctx context.Context, email
 
 	buffer := bytes.Buffer{}
 	data := EmailWithTokenData{token, user.Id}
-	repo.templateService.Render(&buffer, "forgot_password_email.html", "layout", data)
+	repo.templateService.Render(&buffer, "forgot_password_email.html", "layout", models.NewTemplateData(data))
 
 	return repo.emailService.SendEmail(
 		ctx,
@@ -280,7 +284,7 @@ func (repo *AuthRepository) InviteUser(ctx context.Context, email string) error 
 
 	buffer := bytes.Buffer{}
 	data := EmailWithTokenData{token, newId}
-	repo.templateService.Render(&buffer, "invite_email.html", "layout", data)
+	repo.templateService.Render(&buffer, "invite_email.html", "layout", models.NewTemplateData(data))
 
 	return repo.emailService.SendEmail(ctx, email, "You have been invited", buffer.String())
 }

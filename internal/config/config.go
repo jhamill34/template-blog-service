@@ -3,10 +3,15 @@ package config
 import "time"
 
 type Configuration struct {
-	Server   ServerConfig   `yaml:"server"`
-	Database DatabaseConfig `yaml:"database"`
-	Template TemplateConfig `yaml:"template"`
-	Redis    RedisConfig   `yaml:"redis"`
+	Server        ServerConfig        `yaml:"server"`
+	Database      DatabaseConfig      `yaml:"database"`
+	Template      TemplateConfig      `yaml:"template"`
+	Redis         RedisConfig         `yaml:"redis"`
+	Notifications NotificationsConfig `yaml:"notifications"`
+}
+
+type NotificationsConfig struct {
+	Timeout time.Duration `yaml:"timeout"`
 }
 
 type ServerConfig struct {

@@ -4,6 +4,8 @@ import (
 	"html/template"
 	"io"
 	"path/filepath"
+
+	"github.com/jhamill34/notion-provisioner/internal/models"
 )
 
 type TemplateRepository struct {
@@ -68,7 +70,7 @@ func (self *TemplateRepository) Render(
 	w io.Writer,
 	name string,
 	layout string,
-	data interface{},
+	data models.TemplateModel,
 ) error {
 	return self.templates[name].ExecuteTemplate(w, layout, data)
 }

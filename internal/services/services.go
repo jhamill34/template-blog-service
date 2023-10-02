@@ -8,7 +8,7 @@ import (
 )
 
 type AuthService interface {
-	LoginUser(ctx context.Context, email string, password string) (*models.User, error)
+	LoginUser(ctx context.Context, email string, password string) (*models.User, *AuthServiceError)
 	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
 	GetUserByUsername(ctx context.Context, username string) (*models.User, error)
 	CreateUser(ctx context.Context, username, email, password string) error
@@ -29,7 +29,7 @@ type SessionService interface {
 }
 
 type TemplateService interface {
-	Render(w io.Writer, template string, layout string, data interface{}) error
+	Render(w io.Writer, template string, layout string, model models.TemplateModel) error
 }
 
 type EmailService interface {
@@ -40,7 +40,6 @@ type VerifyTokenService interface {
 	Verify(ctx context.Context, id string, token string) error
 	Create(ctx context.Context, id string) (string, error)
 }
-
 
 type TokenClaimsService interface {
 	VerifyWithClaims(ctx context.Context, id string, token string, data interface{}) error

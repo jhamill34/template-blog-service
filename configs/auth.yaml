@@ -33,6 +33,9 @@ general:
     path: "auth-user:password@tcp(auth-mysql)/auth-db?parseTime=true&multiStatements=true"
     migrations:
       - "./migrations/auth/*.sql"
+
+  notifications:
+    timeout: 1s
   
   template:
     common: 
