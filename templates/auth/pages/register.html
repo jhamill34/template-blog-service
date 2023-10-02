@@ -29,6 +29,9 @@ Register
 				<input class="block rounded px-2 py-1 border-gray-500 focus:ring-0 focus:border-emerald-500" id="confirm_password" type="password" name="confirm_password" placeholder="Confirm Password" />
 			</div>
 
+			<input type="hidden" name="token" value="{{ .Token }}" />
+			<input type="hidden" name="id" value="{{ .Id }}" />
+
 			<button class="w-full bg-emerald-300 py-2 rounded font-bold border-[1px] border-gray-500">Register</button>
 		</form>
 	</div>

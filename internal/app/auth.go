@@ -51,6 +51,13 @@ func ConfigureAuth() *Auth {
 		cfg.PasswordConfig,
 	)
 
+	inviteService := repositories.NewHashedVerifyTokenRepository(
+		redisClient,
+		cfg.InviteTTL,
+		repositories.VerificationTypeInvite,
+		cfg.PasswordConfig,
+	)
+
 	emailService := &email.MockEmailService{}
 
 	userDao := dao.NewUserDao(db)
@@ -61,6 +68,7 @@ func ConfigureAuth() *Auth {
 		emailService,
 		templateRepository,
 		forgotPasswordTokenRepository,
+		inviteService,
 	)
 
 	return &Auth{

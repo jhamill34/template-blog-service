@@ -18,6 +18,8 @@ type AuthService interface {
 	VerifyUser(ctx context.Context, id, token string) error
 	ResendVerifyEmail(ctx context.Context, email string) error
 	CreateForgotPasswordToken(ctx context.Context, email string) error
+	InviteUser(ctx context.Context, email string) error
+	VerifyInvite(ctx context.Context, id, token string, predicate func(*models.InviteData) bool) (bool, error)
 }
 
 type SessionService interface {
@@ -38,4 +40,11 @@ type VerifyTokenService interface {
 	Verify(ctx context.Context, id string, token string) error
 	Create(ctx context.Context, id string) (string, error)
 }
+
+
+type TokenClaimsService interface {
+	VerifyWithClaims(ctx context.Context, id string, token string, data interface{}) error
+	CreateWithClaims(ctx context.Context, id string, data interface{}) (string, error)
+	Destroy(ctx context.Context, id string) error
+} 
 

@@ -18,6 +18,7 @@ type HashParams struct {
 	Memory      uint32 `yaml:"memory"`
 	HashLength  uint32 `yaml:"hash_length"`
 	SaltLength  uint32 `yaml:"salt_length"`
+	Secret      string `yaml:"secret"`
 }
 
 type AuthConfig struct {
@@ -27,6 +28,7 @@ type AuthConfig struct {
 	Session           SessionConfig `yaml:"session"`
 	VerifyTTL         time.Duration `yaml:"verify_ttl"`
 	PasswordForgotTTL time.Duration `yaml:"password_forgot_ttl"`
+	InviteTTL         time.Duration `yaml:"invite_ttl"`
 }
 
 type SessionConfig struct {

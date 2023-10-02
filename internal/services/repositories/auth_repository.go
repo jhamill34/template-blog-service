@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/jhamill34/notion-provisioner/internal/config"
 	"github.com/jhamill34/notion-provisioner/internal/database"
 	"github.com/jhamill34/notion-provisioner/internal/database/dao"
@@ -22,6 +23,7 @@ type AuthRepository struct {
 	emailService          services.EmailService
 	templateService       services.TemplateService
 	passwordForgotService services.VerifyTokenService
+	inviteTokenService    services.TokenClaimsService
 }
 
 func NewAuthRepository(
@@ -31,6 +33,7 @@ func NewAuthRepository(
 	emailService services.EmailService,
 	templateService services.TemplateService,
 	passwordForgotService services.VerifyTokenService,
+	inviteTokenService services.TokenClaimsService,
 ) *AuthRepository {
 	return &AuthRepository{
 		userDao:               userDao,
@@ -39,6 +42,7 @@ func NewAuthRepository(
 		emailService:          emailService,
 		templateService:       templateService,
 		passwordForgotService: passwordForgotService,
+		inviteTokenService:    inviteTokenService,
 	}
 }
 
@@ -155,7 +159,7 @@ func (repo *AuthRepository) ResendVerifyEmail(
 
 type EmailWithTokenData struct {
 	Token string
-	Id string
+	Id    string
 }
 
 func (repo *AuthRepository) sendVerifyEmail(
@@ -249,7 +253,55 @@ func (repo *AuthRepository) CreateForgotPasswordToken(ctx context.Context, email
 	data := EmailWithTokenData{token, user.Id}
 	repo.templateService.Render(&buffer, "forgot_password_email.html", "layout", data)
 
-	return repo.emailService.SendEmail(ctx, user.Email, "Reset your password email", buffer.String())
+	return repo.emailService.SendEmail(
+		ctx,
+		user.Email,
+		"Reset your password email",
+		buffer.String(),
+	)
+}
+
+func (repo *AuthRepository) InviteUser(ctx context.Context, email string) error {
+	if _, err := repo.userDao.FindByEmail(ctx, email); err != database.NotFound{
+		return nil
+	}
+
+	user := ctx.Value("user").(*models.User)
+
+	newId := uuid.New().String()
+	token, err := repo.inviteTokenService.CreateWithClaims(
+		ctx,
+		newId,
+		&models.InviteData{InvitedBy: user.UserId, Email: email},
+	)
+	if err != nil {
+		return err
+	}
+
+	buffer := bytes.Buffer{}
+	data := EmailWithTokenData{token, newId}
+	repo.templateService.Render(&buffer, "invite_email.html", "layout", data)
+
+	return repo.emailService.SendEmail(ctx, email, "You have been invited", buffer.String())
+}
+
+func (repo *AuthRepository) VerifyInvite(ctx context.Context, id, token string, predicate func(*models.InviteData) bool) (bool, error) {
+	var inviteData models.InviteData
+	err := repo.inviteTokenService.VerifyWithClaims(ctx, id, token, &inviteData)
+	if err != nil {
+		return false, err
+	}
+
+	if !predicate(&inviteData) {
+		return false, nil
+	} else {
+		err = repo.inviteTokenService.Destroy(ctx, id)
+		if err != nil {
+			return false, err
+		}
+	}
+
+	return true, nil
 }
 
 // var _ services.AuthService = (*AuthRepository)(nil)

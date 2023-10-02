@@ -45,7 +45,7 @@ func (r *AuthRoutes) Routes() (string, http.Handler) {
 		group.Get("/", r.Index())
 		group.Get("/login", r.LoginPage())
 		group.Post("/login", r.ProcessLogin())
-	
+
 		router.Get("/verify", r.VerifyEmail())
 		router.Get("/verify/resend", r.ResendEmail())
 
@@ -62,7 +62,8 @@ func (r *AuthRoutes) Routes() (string, http.Handler) {
 		group.Use(middleware.RedirectToLoginMiddleware)
 		group.Get("/userinfo", r.UserInfo())
 		group.Get("/home", r.Home())
-		group.Post("/invite", r.Invite())
+		group.Get("/invite", r.Invite())
+		group.Post("/invite", r.ProcessInvite())
 	})
 
 	return "/auth", router
@@ -70,9 +71,7 @@ func (r *AuthRoutes) Routes() (string, http.Handler) {
 
 func (self *AuthRoutes) Index() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		self.templateService.Render(w, "index.html", "layout", nil)
+		http.Redirect(w, r, "/auth/home", http.StatusFound)
 	}
 }
 
@@ -149,11 +148,19 @@ func (self *AuthRoutes) Home() http.HandlerFunc {
 	}
 }
 
+type RegisterData struct {
+	Token string
+	Id    string
+}
+
 func (self *AuthRoutes) Register() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		token := r.URL.Query().Get("token")
+		id := r.URL.Query().Get("id")
+
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
-		self.templateService.Render(w, "register.html", "layout", nil)
+		self.templateService.Render(w, "register.html", "layout", RegisterData{token, id})
 	}
 }
 
@@ -163,13 +170,27 @@ func (self *AuthRoutes) ProcessRegister() http.HandlerFunc {
 		username := r.FormValue("username")
 		password := r.FormValue("password")
 		confirmPassword := r.FormValue("confirm_password")
+		token := r.FormValue("token")
+		id := r.FormValue("id")
+
+		ok, err := self.authService.VerifyInvite(r.Context(), id, token, func(claims *models.InviteData) bool {
+			return claims.Email == email
+		})
+		if err != nil {
+			panic(err)
+		}
+
+		if !ok {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 
 		if password != confirmPassword {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
-		err := self.authService.CreateUser(r.Context(), username, email, password)
+		err = self.authService.CreateUser(r.Context(), username, email, password)
 		if err == database.Duplicate {
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -223,13 +244,13 @@ func (self *AuthRoutes) ResendEmail() http.HandlerFunc {
 }
 
 type tokenData struct {
-	Token string
+	Token  string
 	UserId string
 }
 
 type changePasswordAnonymousData struct {
-	User *models.User
-	TokenData  *tokenData
+	User      *models.User
+	TokenData *tokenData
 }
 
 func (self *AuthRoutes) ChangePassword() http.HandlerFunc {
@@ -238,14 +259,14 @@ func (self *AuthRoutes) ChangePassword() http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
-			
+
 		var data changePasswordAnonymousData
 		if user != nil {
 			data = changePasswordAnonymousData{TokenData: nil, User: user.(*models.User)}
 		} else {
 			token := r.URL.Query().Get("token")
 			userId := r.URL.Query().Get("id")
-			data = changePasswordAnonymousData{TokenData: &tokenData { token, userId }, User: nil }
+			data = changePasswordAnonymousData{TokenData: &tokenData{token, userId}, User: nil}
 		}
 		self.templateService.Render(w, "change_password.html", "layout", data)
 	}
@@ -254,10 +275,10 @@ func (self *AuthRoutes) ChangePassword() http.HandlerFunc {
 func (self *AuthRoutes) ProcessChangePassword() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user := r.Context().Value("user")
-			
+
 		newPassword := r.FormValue("new_password")
 		confirmPassword := r.FormValue("confirm_password")
-	
+
 		if newPassword != confirmPassword {
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -266,7 +287,7 @@ func (self *AuthRoutes) ProcessChangePassword() http.HandlerFunc {
 		if user != nil {
 			user := user.(*models.User)
 			currentPassword := r.FormValue("current_password")
-	
+
 			err := self.authService.ChangePassword(
 				r.Context(),
 				user.UserId,
@@ -276,12 +297,12 @@ func (self *AuthRoutes) ProcessChangePassword() http.HandlerFunc {
 			if err != nil {
 				panic(err)
 			}
-	
+
 			http.Redirect(w, r, "/auth/home", http.StatusFound)
 		} else {
 			token := r.FormValue("token")
 			id := r.FormValue("id")
-	
+
 			err := self.authService.ChangePasswordWithToken(
 				r.Context(),
 				id,
@@ -291,7 +312,7 @@ func (self *AuthRoutes) ProcessChangePassword() http.HandlerFunc {
 			if err != nil {
 				panic(err)
 			}
-	
+
 			http.Redirect(w, r, "/auth/login", http.StatusFound)
 		}
 	}
@@ -319,9 +340,24 @@ func (self *AuthRoutes) ProcessForgotPassword() http.HandlerFunc {
 	}
 }
 
-// TODO: Implement ME
 func (self *AuthRoutes) Invite() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
+		self.templateService.Render(w, "invite_user.html", "layout", nil)
+	}
+}
+
+func (self *AuthRoutes) ProcessInvite() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		email := r.FormValue("email")
+
+		err := self.authService.InviteUser(r.Context(), email)
+
+		if err != nil {
+			panic(err)
+		}
+
+		http.Redirect(w, r, "/auth/home", http.StatusFound)
 	}
 }

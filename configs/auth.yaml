@@ -8,9 +8,11 @@ password_config:
   parallelism: 4
   hash_length: 32
   salt_length: 16
+  secret: SECRET
 
 verify_ttl: 300s
 password_forgot_ttl: 300s
+invite_ttl: 86400s
 
 session:
   ttl: 3600s 
