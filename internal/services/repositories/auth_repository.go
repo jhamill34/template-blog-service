@@ -3,9 +3,6 @@ package repositories
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
-	"crypto/subtle"
-	"encoding/base64"
 	"fmt"
 	"strings"
 
@@ -14,17 +11,17 @@ import (
 	"github.com/jhamill34/notion-provisioner/internal/database/dao"
 	"github.com/jhamill34/notion-provisioner/internal/models"
 	"github.com/jhamill34/notion-provisioner/internal/services"
-	"golang.org/x/crypto/argon2"
 )
 
 const ROOT_NAME = "ROOT"
 
 type AuthRepository struct {
-	userDao            *dao.UserDao
-	passwordConfig     *config.HashParams
-	verifyTokenService services.VerifyTokenService
-	emailService       services.EmailService
-	templateService    services.TemplateService
+	userDao               *dao.UserDao
+	passwordConfig        *config.HashParams
+	verifyTokenService    services.VerifyTokenService
+	emailService          services.EmailService
+	templateService       services.TemplateService
+	passwordForgotService services.VerifyTokenService
 }
 
 func NewAuthRepository(
@@ -33,13 +30,15 @@ func NewAuthRepository(
 	verifyTokenService services.VerifyTokenService,
 	emailService services.EmailService,
 	templateService services.TemplateService,
+	passwordForgotService services.VerifyTokenService,
 ) *AuthRepository {
 	return &AuthRepository{
-		userDao:            userDao,
-		passwordConfig:     passwordConfig,
-		verifyTokenService: verifyTokenService,
-		emailService:       emailService,
-		templateService:    templateService,
+		userDao:               userDao,
+		passwordConfig:        passwordConfig,
+		verifyTokenService:    verifyTokenService,
+		emailService:          emailService,
+		templateService:       templateService,
+		passwordForgotService: passwordForgotService,
 	}
 }
 
@@ -154,8 +153,9 @@ func (repo *AuthRepository) ResendVerifyEmail(
 	return repo.sendVerifyEmail(ctx, user)
 }
 
-type RegisterEmailData struct {
+type EmailWithTokenData struct {
 	Token string
+	Id string
 }
 
 func (repo *AuthRepository) sendVerifyEmail(
@@ -168,7 +168,7 @@ func (repo *AuthRepository) sendVerifyEmail(
 	}
 
 	buffer := bytes.Buffer{}
-	data := RegisterEmailData{token}
+	data := EmailWithTokenData{token, user.Id}
 	repo.templateService.Render(&buffer, "register_email.html", "layout", data)
 
 	return repo.emailService.SendEmail(ctx, user.Email, "Verify your email", buffer.String())
@@ -210,122 +210,46 @@ func (repo *AuthRepository) ChangePassword(
 	return fmt.Errorf("Invalid User Credentials")
 }
 
-func (repo *AuthRepository) VerifyUser(ctx context.Context, token string) error {
-	userId, err := repo.verifyTokenService.Verify(ctx, token)
+func (repo *AuthRepository) ChangePasswordWithToken(
+	ctx context.Context,
+	id, token, newPassword string,
+) error {
+	err := repo.passwordForgotService.Verify(ctx, id, token)
+	if err != nil {
+		return err
+	}
+
+	encodedHash, err := createHash(repo.passwordConfig, newPassword)
+	if err != nil {
+		return err
+	}
+
+	return repo.userDao.ChangePassword(ctx, id, encodedHash)
+}
+
+func (repo *AuthRepository) VerifyUser(ctx context.Context, id, token string) error {
+	err := repo.verifyTokenService.Verify(ctx, id, token)
 
 	if err != nil {
 		return err
 	}
 
-	return repo.userDao.VerifyUser(ctx, userId)
+	return repo.userDao.VerifyUser(ctx, id)
 }
 
-func comparePasswords(password, encodedPassword string) (bool, error) {
-	params, salt, storedHash, err := decodeHash(encodedPassword)
-
+func (repo *AuthRepository) CreateForgotPasswordToken(ctx context.Context, email string) error {
+	user, err := repo.userDao.FindByEmail(ctx, email)
 	if err != nil {
-		return false, err
+		return err
 	}
 
-	hash := argon2.IDKey(
-		[]byte(password),
-		salt,
-		params.Iterations,
-		params.Memory,
-		params.Parallelism,
-		params.HashLength,
-	)
+	token, err := repo.passwordForgotService.Create(ctx, user.Id)
 
-	if subtle.ConstantTimeCompare(storedHash, hash) == 1 {
-		return true, nil
-	}
+	buffer := bytes.Buffer{}
+	data := EmailWithTokenData{token, user.Id}
+	repo.templateService.Render(&buffer, "forgot_password_email.html", "layout", data)
 
-	return false, nil
-}
-
-// "$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s",
-
-func createHash(params *config.HashParams, password string) (string, error) {
-	salt, err := randomBytes(params.SaltLength)
-	if err != nil {
-		return "", err
-	}
-
-	hash := argon2.IDKey(
-		[]byte(password),
-		salt,
-		params.Iterations,
-		params.Memory,
-		params.Parallelism,
-		params.HashLength,
-	)
-	base64hash := base64.RawStdEncoding.EncodeToString(hash)
-	base64salt := base64.RawStdEncoding.EncodeToString(salt)
-
-	return fmt.Sprintf(
-		"$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s",
-		argon2.Version,
-		params.Memory,
-		params.Iterations,
-		params.Parallelism,
-		base64salt,
-		base64hash,
-	), nil
-}
-
-func decodeHash(
-	encodedPassword string,
-) (params *config.HashParams, salt []byte, hash []byte, err error) {
-	vals := strings.Split(encodedPassword, "$")
-
-	if len(vals) != 6 || vals[0] != "" || vals[1] != "argon2id" {
-		return nil, nil, nil, fmt.Errorf("Invalid hash format")
-	}
-
-	var version int
-	_, err = fmt.Sscanf(vals[2], "v=%d", &version)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	if version != argon2.Version {
-		return nil, nil, nil, fmt.Errorf("Invalid hash version")
-	}
-
-	params = &config.HashParams{}
-	_, err = fmt.Sscanf(
-		vals[3],
-		"m=%d,t=%d,p=%d",
-		&params.Memory,
-		&params.Iterations,
-		&params.Parallelism,
-	)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	salt, err = base64.RawStdEncoding.Strict().DecodeString(vals[4])
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	params.SaltLength = uint32(len(salt))
-
-	hash, err = base64.RawStdEncoding.Strict().DecodeString(vals[5])
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	params.HashLength = uint32(len(hash))
-
-	return params, salt, hash, nil
-}
-
-func randomBytes(length uint32) ([]byte, error) {
-	bytes := make([]byte, length)
-	if _, err := rand.Read(bytes); err != nil {
-		return nil, err
-	}
-
-	return bytes, nil
+	return repo.emailService.SendEmail(ctx, user.Email, "Reset your password email", buffer.String())
 }
 
 // var _ services.AuthService = (*AuthRepository)(nil)

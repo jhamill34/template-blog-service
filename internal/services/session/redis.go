@@ -25,6 +25,7 @@ func (self *RedisSessionStore) Create(ctx context.Context, data interface{}) (st
 		return "", err
 	}
 
+	// TODO: Sign a JWT and store the token instead of HSet
 	err = self.redisClient.HSet(ctx, PREFIX+id, data).Err()
 	if err != nil {
 		return "", err

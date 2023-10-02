@@ -14,8 +14,10 @@ type AuthService interface {
 	CreateUser(ctx context.Context, username, email, password string) error
 	CreateRootUser(ctx context.Context, email, password string) error
 	ChangePassword(ctx context.Context, id, currentPassword, newPassword string) error
-	VerifyUser(ctx context.Context, token string) error
+	ChangePasswordWithToken(ctx context.Context, id, token, newPassword string) error
+	VerifyUser(ctx context.Context, id, token string) error
 	ResendVerifyEmail(ctx context.Context, email string) error
+	CreateForgotPasswordToken(ctx context.Context, email string) error
 }
 
 type SessionService interface {
@@ -33,7 +35,7 @@ type EmailService interface {
 }
 
 type VerifyTokenService interface {
-	Verify(ctx context.Context, token string) (string, error)
+	Verify(ctx context.Context, id string, token string) error
 	Create(ctx context.Context, id string) (string, error)
 }
 

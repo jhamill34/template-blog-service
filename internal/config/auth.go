@@ -21,11 +21,12 @@ type HashParams struct {
 }
 
 type AuthConfig struct {
-	General        Configuration `yaml:"general"`
-	DefaultUser    *User         `yaml:"default_user"`
-	PasswordConfig *HashParams   `yaml:"password_config"`
-	Session 	   SessionConfig `yaml:"session"`
-	VerifyTTL      time.Duration `yaml:"verify_ttl"`
+	General           Configuration `yaml:"general"`
+	DefaultUser       *User         `yaml:"default_user"`
+	PasswordConfig    *HashParams   `yaml:"password_config"`
+	Session           SessionConfig `yaml:"session"`
+	VerifyTTL         time.Duration `yaml:"verify_ttl"`
+	PasswordForgotTTL time.Duration `yaml:"password_forgot_ttl"`
 }
 
 type SessionConfig struct {

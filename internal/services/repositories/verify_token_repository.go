@@ -2,9 +2,11 @@ package repositories
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jhamill34/notion-provisioner/internal/config"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -15,54 +17,68 @@ const (
 	VerificationTypeForgotPassword VerificationType = "forgot_password:"
 )
 
-type VerifyRegistrationTokenRepository struct {
-	redisClient *redis.Client
-	ttl         time.Duration
-	prefix      VerificationType
+type HashedVerifyTokenRepository struct {
+	redisClient    *redis.Client
+	ttl            time.Duration
+	prefix         VerificationType
+	passwordParams *config.HashParams
 }
 
-func NewVerifyRegistrationTokenRepository(
+func NewHashedVerifyTokenRepository(
 	redisClient *redis.Client,
 	ttl time.Duration,
 	prefix VerificationType,
-) *VerifyRegistrationTokenRepository {
-	return &VerifyRegistrationTokenRepository{
-		redisClient: redisClient,
-		ttl:         ttl,
-		prefix:      prefix,
+	passwordParams *config.HashParams,
+) *HashedVerifyTokenRepository {
+	return &HashedVerifyTokenRepository{
+		redisClient:    redisClient,
+		ttl:            ttl,
+		prefix:         prefix,
+		passwordParams: passwordParams,
 	}
 }
 
 // Create implements services.VerifyTokenService.
-func (self *VerifyRegistrationTokenRepository) Create(
+func (self *HashedVerifyTokenRepository) Create(
 	ctx context.Context,
 	id string,
 ) (string, error) {
-	token := uuid.New().String()
-	err := self.redisClient.Set(ctx, string(self.prefix)+token, id, self.ttl).Err()
+	publicToken := uuid.New().String()
+	token, err := createHash(self.passwordParams, publicToken)
+
+	err = self.redisClient.Set(ctx, string(self.prefix)+id, token, self.ttl).Err()
 	if err != nil {
 		return "", err
 	}
 
-	return token, nil
+	return publicToken, nil
 }
 
 // Verify implements services.VerifyTokenService.
-func (self *VerifyRegistrationTokenRepository) Verify(
+func (self *HashedVerifyTokenRepository) Verify(
 	ctx context.Context,
-	token string,
-) (string, error) {
-	userId, err := self.redisClient.Get(ctx, string(self.prefix)+token).Result()
+	id, token string,
+) error {
+	hashedToken, err := self.redisClient.Get(ctx, string(self.prefix)+id).Result()
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	err = self.redisClient.Del(ctx, string(self.prefix)+token).Err()
+	ok, err := comparePasswords(token, hashedToken)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	return userId, nil
+	if ok {
+		err = self.redisClient.Del(ctx, string(self.prefix)+id).Err()
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	return fmt.Errorf("Invalid Token")
 }
 
 // var _ services.VerifyTokenService = (*VerifyTokenRepository)(nil)

@@ -38,11 +38,19 @@ func ConfigureAuth() *Auth {
 	})
 
 	sessionStore := session.NewRedisSessionStore(redisClient, cfg.Session.TTL)
-	verifyTokenRepository := repositories.NewVerifyRegistrationTokenRepository(
+	verifyTokenRepository := repositories.NewHashedVerifyTokenRepository(
 		redisClient,
 		cfg.VerifyTTL,
 		repositories.VerificationTypeRegistration,
+		cfg.PasswordConfig,
 	)
+	forgotPasswordTokenRepository := repositories.NewHashedVerifyTokenRepository(
+		redisClient,
+		cfg.PasswordForgotTTL,
+		repositories.VerificationTypeForgotPassword,
+		cfg.PasswordConfig,
+	)
+
 	emailService := &email.MockEmailService{}
 
 	userDao := dao.NewUserDao(db)
@@ -52,6 +60,7 @@ func ConfigureAuth() *Auth {
 		verifyTokenRepository,
 		emailService,
 		templateRepository,
+		forgotPasswordTokenRepository,
 	)
 
 	return &Auth{

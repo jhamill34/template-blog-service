@@ -10,6 +10,7 @@ password_config:
   salt_length: 16
 
 verify_ttl: 300s
+password_forgot_ttl: 300s
 
 session:
   ttl: 3600s 

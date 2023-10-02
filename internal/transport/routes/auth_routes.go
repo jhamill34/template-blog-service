@@ -37,6 +37,8 @@ func (r *AuthRoutes) Routes() (string, http.Handler) {
 	router := chi.NewRouter()
 	router.Use(middleware.NewAuthorizeMiddleware(r.sessionService))
 	router.Get("/logout", r.Logout())
+	router.Get("/password/change", r.ChangePassword())
+	router.Post("/password/change", r.ProcessChangePassword())
 
 	router.Group(func(group chi.Router) {
 		group.Use(middleware.RedirectToHomeMiddleware)
@@ -52,16 +54,14 @@ func (r *AuthRoutes) Routes() (string, http.Handler) {
 		group.Post("/register", r.ProcessRegister())
 
 		// TODO: Feature flag
-		group.Get("/forgot-password", r.ForgotPassword())
-		group.Post("/forgot-password", r.ProcessForgotPassword())
+		group.Get("/password/forgot", r.ForgotPassword())
+		group.Post("/password/forgot", r.ProcessForgotPassword())
 	})
 
 	router.Group(func(group chi.Router) {
 		group.Use(middleware.RedirectToLoginMiddleware)
 		group.Get("/userinfo", r.UserInfo())
 		group.Get("/home", r.Home())
-		group.Get("/change-password", r.ChangePasswordLoggedIn())
-		group.Post("/change-password", r.ProcessChangePasswordLoggedIn())
 		group.Post("/invite", r.Invite())
 	})
 
@@ -186,13 +186,14 @@ func (self *AuthRoutes) ProcessRegister() http.HandlerFunc {
 func (self *AuthRoutes) VerifyEmail() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		token := r.URL.Query().Get("token")
+		id := r.URL.Query().Get("id")
 
 		if token == "" {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
-		err := self.authService.VerifyUser(r.Context(), token)
+		err := self.authService.VerifyUser(r.Context(), id, token)
 		if err != nil {
 			panic(err)
 		}
@@ -221,40 +222,78 @@ func (self *AuthRoutes) ResendEmail() http.HandlerFunc {
 	}
 }
 
-func (self *AuthRoutes) ChangePasswordLoggedIn() http.HandlerFunc {
+type tokenData struct {
+	Token string
+	UserId string
+}
+
+type changePasswordAnonymousData struct {
+	User *models.User
+	TokenData  *tokenData
+}
+
+func (self *AuthRoutes) ChangePassword() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		user := r.Context().Value("user").(*models.User)
+		user := r.Context().Value("user")
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
-		self.templateService.Render(w, "change_password.html", "layout", user)
+			
+		var data changePasswordAnonymousData
+		if user != nil {
+			data = changePasswordAnonymousData{TokenData: nil, User: user.(*models.User)}
+		} else {
+			token := r.URL.Query().Get("token")
+			userId := r.URL.Query().Get("id")
+			data = changePasswordAnonymousData{TokenData: &tokenData { token, userId }, User: nil }
+		}
+		self.templateService.Render(w, "change_password.html", "layout", data)
 	}
 }
 
-func (self *AuthRoutes) ProcessChangePasswordLoggedIn() http.HandlerFunc {
+func (self *AuthRoutes) ProcessChangePassword() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		user := r.Context().Value("user").(*models.User)
-
-		currentPassword := r.FormValue("current_password")
+		user := r.Context().Value("user")
+			
 		newPassword := r.FormValue("new_password")
 		confirmPassword := r.FormValue("confirm_password")
-
+	
 		if newPassword != confirmPassword {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
-		err := self.authService.ChangePassword(
-			r.Context(),
-			user.UserId,
-			currentPassword,
-			newPassword,
-		)
-		if err != nil {
-			panic(err)
+		if user != nil {
+			user := user.(*models.User)
+			currentPassword := r.FormValue("current_password")
+	
+			err := self.authService.ChangePassword(
+				r.Context(),
+				user.UserId,
+				currentPassword,
+				newPassword,
+			)
+			if err != nil {
+				panic(err)
+			}
+	
+			http.Redirect(w, r, "/auth/home", http.StatusFound)
+		} else {
+			token := r.FormValue("token")
+			id := r.FormValue("id")
+	
+			err := self.authService.ChangePasswordWithToken(
+				r.Context(),
+				id,
+				token,
+				newPassword,
+			)
+			if err != nil {
+				panic(err)
+			}
+	
+			http.Redirect(w, r, "/auth/login", http.StatusFound)
 		}
-
-		http.Redirect(w, r, "/auth/home", http.StatusFound)
 	}
 }
 
@@ -266,16 +305,17 @@ func (self *AuthRoutes) ForgotPassword() http.HandlerFunc {
 	}
 }
 
-// TODO: Implement ME
 func (self *AuthRoutes) ProcessForgotPassword() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// email := r.FormValue("email")
-		// find user for email
-		// create a token 
-		// send an email with the token
-		// store token in redis and map to user id
+		email := r.FormValue("email")
 
-		w.WriteHeader(http.StatusOK)
+		err := self.authService.CreateForgotPasswordToken(r.Context(), email)
+
+		if err != nil {
+			panic(err)
+		}
+
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
 	}
 }
 
