@@ -41,6 +41,7 @@ func LoadAuthConfig(filename string) (AuthConfig, error) {
 	if err != nil {
 		return AuthConfig{}, err
 	}
+	defer file.Close()
 
 	var config AuthConfig
 	decoder := yaml.NewDecoder(file)

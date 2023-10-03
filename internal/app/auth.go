@@ -7,6 +7,7 @@ import (
 	"github.com/jhamill34/notion-provisioner/internal/database"
 	"github.com/jhamill34/notion-provisioner/internal/database/dao"
 	"github.com/jhamill34/notion-provisioner/internal/services/email"
+	"github.com/jhamill34/notion-provisioner/internal/services/rbac"
 	"github.com/jhamill34/notion-provisioner/internal/services/repositories"
 	"github.com/jhamill34/notion-provisioner/internal/services/session"
 	"github.com/jhamill34/notion-provisioner/internal/transport"
@@ -50,7 +51,6 @@ func ConfigureAuth() *Auth {
 		repositories.VerificationTypeForgotPassword,
 		cfg.PasswordConfig,
 	)
-
 	inviteService := repositories.NewHashedVerifyTokenRepository(
 		redisClient,
 		cfg.InviteTTL,
@@ -71,6 +71,9 @@ func ConfigureAuth() *Auth {
 		inviteService,
 	)
 
+	permissionModel := config.LoadRbacModel("configs/rbac_model.conf")
+	accessControlService := rbac.NewCasbinAccessControl(permissionModel, userDao)
+
 	return &Auth{
 		server: transport.NewServer(
 			cfg.General.Server,
@@ -80,6 +83,7 @@ func ConfigureAuth() *Auth {
 				authRepo,
 				sessionStore,
 				templateRepository,
+				accessControlService,
 			),
 			routes.NewOauthRoutes(
 				sessionStore,

@@ -38,6 +38,7 @@ func NewServer(
 ) Server {
 	router := chi.NewRouter()
 
+	// TODO: CORS? 
 	router.Use(middleware.RequestID)
 	router.Use(middleware.RealIP)
 	router.Use(middleware.Logger)

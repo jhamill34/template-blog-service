@@ -13,11 +13,12 @@ import (
 )
 
 type AuthRoutes struct {
-	notificationConfig config.NotificationsConfig
-	sessionConfig      config.SessionConfig
-	authService        services.AuthService
-	sessionService     services.SessionService
-	templateService    services.TemplateService
+	notificationConfig   config.NotificationsConfig
+	sessionConfig        config.SessionConfig
+	authService          services.AuthService
+	sessionService       services.SessionService
+	templateService      services.TemplateService
+	accessControlService services.AccessControlService
 }
 
 func NewAuthRoutes(
@@ -26,13 +27,15 @@ func NewAuthRoutes(
 	authService services.AuthService,
 	sessionService services.SessionService,
 	templateService services.TemplateService,
+	accessControlService services.AccessControlService,
 ) *AuthRoutes {
 	return &AuthRoutes{
-		notificationConfig: notificationConfig,
-		sessionConfig:      sessionConfig,
-		authService:        authService,
-		sessionService:     sessionService,
-		templateService:    templateService,
+		notificationConfig:   notificationConfig,
+		sessionConfig:        sessionConfig,
+		authService:          authService,
+		sessionService:       sessionService,
+		templateService:      templateService,
+		accessControlService: accessControlService,
 	}
 }
 
@@ -323,7 +326,7 @@ func (self *AuthRoutes) ProcessChangePassword() http.HandlerFunc {
 
 		newPassword := r.FormValue("new_password")
 		confirmPassword := r.FormValue("confirm_password")
-			
+
 		token := r.FormValue("token")
 		id := r.FormValue("id")
 		var url string
@@ -417,6 +420,13 @@ func (self *AuthRoutes) Invite() http.HandlerFunc {
 
 func (self *AuthRoutes) ProcessInvite() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		accessControlErr := self.accessControlService.Enforce(r.Context(), "invite", "send")
+		if accessControlErr != nil {
+			utils.SetNotifications(w, accessControlErr, "/auth/invite", self.notificationConfig.Timeout)
+			http.Redirect(w, r, "/auth/invite", http.StatusFound)
+			return 
+		}
+
 		email := r.FormValue("email")
 
 		err := self.authService.InviteUser(r.Context(), email)

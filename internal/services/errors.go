@@ -44,3 +44,19 @@ func NewTokenError(message string) *TokenError {
 var InvalidToken *TokenError = NewTokenError("Invalid token")
 var TokenNotFound *TokenError = NewTokenError("Token not found")
 
+//==================================================
+
+type AccessControlError struct {
+	Message string
+}
+
+func (self *AccessControlError) Notify() *models.Notification {
+	return &models.Notification{Message: self.Message}
+}
+
+func NewAccessControlError(message string) *AccessControlError {
+	return &AccessControlError{Message: message}
+}
+
+var AccessDenied *AccessControlError = NewAccessControlError("Access denied")
+

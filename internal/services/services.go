@@ -47,3 +47,8 @@ type TemplateService interface {
 type EmailService interface {
 	SendEmail(ctx context.Context, to, subject, body string) 
 }
+
+type AccessControlService interface {
+	Enforce(ctx context.Context, resource string, action string) *AccessControlError
+}
+

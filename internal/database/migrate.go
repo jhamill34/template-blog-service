@@ -138,22 +138,27 @@ func runMigrations(db *sqlx.DB, migrations []migration) error {
 		migration := migrations[i]
 		queryFile, err = os.Open(migration.path)
 		if err != nil {
+			log.Println("Error opening migration file", migration.path)
 			break
 		}
 
 		query, err = io.ReadAll(queryFile)
 		if err != nil {
+			log.Println("Error reading migration file", migration.path)
 			break
 		}
 
 		tx, err = db.Begin()
 		if err != nil {
+			log.Println("Error starting transaction for migration", migration.path)
 			break
 		}
 
 		_, err = tx.Exec(string(query))
 
 		if err != nil {
+			log.Println(err)
+			log.Println("Error executing migration", migration.path)
 			tx.Rollback()
 			break
 		}
