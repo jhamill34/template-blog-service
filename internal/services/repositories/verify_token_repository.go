@@ -7,12 +7,12 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jhamill34/notion-provisioner/internal/config"
+	"github.com/jhamill34/notion-provisioner/internal/services"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -49,43 +49,47 @@ func NewHashedVerifyTokenRepository(
 func (self *HashedVerifyTokenRepository) Create(
 	ctx context.Context,
 	id string,
-) (string, error) {
+) string {
 	publicToken := uuid.New().String()
 	token, err := createHash(self.passwordParams, publicToken)
 
 	err = self.redisClient.Set(ctx, string(self.prefix)+id, token, self.ttl).Err()
 	if err != nil {
-		return "", err
+		panic(err)
 	}
 
-	return publicToken, nil
+	return publicToken
 }
 
 // Verify implements services.VerifyTokenService.
 func (self *HashedVerifyTokenRepository) Verify(
 	ctx context.Context,
 	id, token string,
-) error {
+) *services.TokenError {
 	hashedToken, err := self.redisClient.Get(ctx, string(self.prefix)+id).Result()
+	if err == redis.Nil {
+		return services.TokenNotFound
+	}
+
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	ok, err := comparePasswords(token, hashedToken)
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	if ok {
 		err = self.redisClient.Del(ctx, string(self.prefix)+id).Err()
 		if err != nil {
-			return err
+			panic(err)
 		}
 
 		return nil
 	}
 
-	return fmt.Errorf("Invalid Token")
+	return services.InvalidToken
 }
 
 // CreateWithClaims implements services.TokenClaimsService.
@@ -93,7 +97,7 @@ func (self *HashedVerifyTokenRepository) CreateWithClaims(
 	ctx context.Context,
 	id string,
 	data interface{},
-) (string, error) {
+) string {
 	publicToken := uuid.New().String()
 
 	token, err := createHash(self.passwordParams, publicToken)
@@ -114,10 +118,10 @@ func (self *HashedVerifyTokenRepository) CreateWithClaims(
 
 	err = self.redisClient.Set(ctx, string(self.prefix)+id, output, self.ttl).Err()
 	if err != nil {
-		return "", err
+		panic(err)
 	}
 
-	return publicToken, nil
+	return publicToken
 }
 
 // VerifyWithClaims implements services.TokenClaimsService.
@@ -126,15 +130,19 @@ func (self *HashedVerifyTokenRepository) VerifyWithClaims(
 	id string,
 	token string,
 	data interface{},
-) error {
+) *services.TokenError {
 	hashedToken, err := self.redisClient.Get(ctx, string(self.prefix)+id).Result()
+	if err == redis.Nil {
+		return services.TokenNotFound
+	}
+
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	parts := strings.Split(hashedToken, ".")
 	if len(parts) != 3 {
-		return fmt.Errorf("Invalid Token")
+		return services.InvalidToken
 	}
 
 	mac := hmac.New(sha256.New, []byte(self.passwordParams.Secret))
@@ -143,44 +151,42 @@ func (self *HashedVerifyTokenRepository) VerifyWithClaims(
 
 	decodedSignature, err := base64.RawURLEncoding.DecodeString(parts[2])
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	if !hmac.Equal(signature, decodedSignature) {
-		return fmt.Errorf("Invalid Token")
+		return services.InvalidToken
 	}
 
 	decodedToken, err := base64.RawURLEncoding.DecodeString(parts[0])
 	if err != nil {
-		return err
+		panic(err)
 	}
 	ok, err := comparePasswords(token, string(decodedToken))
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	if !ok {
-		return fmt.Errorf("Invalid Token")
+		return services.InvalidToken
 	}
 
 	decodedClaims, err := base64.RawURLEncoding.DecodeString(parts[1])
 	if err != nil {
-		return err
+		panic(err)
 	}
 	err = json.NewDecoder(bytes.NewBuffer(decodedClaims)).Decode(data)
 	if err != nil {
-		return err
+		panic(err)
 	}
-	return nil 
+	return nil
 }
 
-func (self *HashedVerifyTokenRepository) Destroy(ctx context.Context, id string) error {
+func (self *HashedVerifyTokenRepository) Destroy(ctx context.Context, id string) {
 	err := self.redisClient.Del(ctx, string(self.prefix)+id).Err()
 	if err != nil {
-		return err
+		panic(err)
 	}
-
-	return nil
 }
 
 // var _ services.TokenClaimsService = (*HashedVerifyTokenRepository)(nil)

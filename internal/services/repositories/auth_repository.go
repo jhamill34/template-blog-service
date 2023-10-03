@@ -3,7 +3,6 @@ package repositories
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
@@ -85,15 +84,15 @@ func (repo *AuthRepository) LoginUser(
 func (repo *AuthRepository) GetUserByEmail(
 	ctx context.Context,
 	email string,
-) (*models.User, error) {
+) (*models.User, *services.AuthServiceError) {
 	user, err := repo.userDao.FindByEmail(ctx, email)
 
 	if err == database.NotFound {
-		return nil, nil
+		return nil, services.AccountNotFound
 	}
 
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
 	return &models.User{
@@ -106,15 +105,15 @@ func (repo *AuthRepository) GetUserByEmail(
 func (repo *AuthRepository) GetUserByUsername(
 	ctx context.Context,
 	username string,
-) (*models.User, error) {
+) (*models.User, *services.AuthServiceError) {
 	user, err := repo.userDao.FindByUsername(ctx, username)
 
 	if err == database.NotFound {
-		return nil, nil
+		return nil, services.AccountNotFound
 	}
 
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
 	return &models.User{
@@ -127,38 +126,50 @@ func (repo *AuthRepository) GetUserByUsername(
 func (repo *AuthRepository) CreateUser(
 	ctx context.Context,
 	username, email, password string,
-) error {
+) *services.AuthServiceError {
 	if username == ROOT_NAME {
-		return fmt.Errorf("Cannot create user with reserved name: %s", ROOT_NAME)
+		return services.EmailAlreadyInUse
 	}
 
 	encodedHash, err := createHash(repo.passwordConfig, password)
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	user, err := repo.userDao.CreateUser(ctx, username, email, encodedHash, false)
-	if err != nil {
-		return err
+	if err == database.Duplicate {
+		return services.EmailAlreadyInUse
 	}
 
-	return repo.sendVerifyEmail(ctx, user)
+	if err != nil {
+		panic(err)
+	}
+
+	repo.sendVerifyEmail(ctx, user)
+
+	return nil
 }
 
 func (repo *AuthRepository) ResendVerifyEmail(
 	ctx context.Context,
 	email string,
-) error {
+) *services.AuthServiceError {
 	user, err := repo.userDao.FindByEmail(ctx, email)
+	if err == database.NotFound {
+		return services.AccountNotFound
+	}
+
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	if user.Verified {
-		return fmt.Errorf("User is already verified")
+		return services.AccountAlreadyVerified
 	}
 
-	return repo.sendVerifyEmail(ctx, user)
+	repo.sendVerifyEmail(ctx, user)
+
+	return nil
 }
 
 type EmailWithTokenData struct {
@@ -169,143 +180,211 @@ type EmailWithTokenData struct {
 func (repo *AuthRepository) sendVerifyEmail(
 	ctx context.Context,
 	user *database.UserEntity,
-) error {
-	token, err := repo.verifyTokenService.Create(ctx, user.Id)
-	if err != nil {
-		return err
-	}
+) {
+	token := repo.verifyTokenService.Create(ctx, user.Id)
 
 	buffer := bytes.Buffer{}
 	data := EmailWithTokenData{token, user.Id}
-	repo.templateService.Render(&buffer, "register_email.html", "layout", models.NewTemplateData(data))
+	repo.templateService.Render(
+		&buffer,
+		"register_email.html",
+		"layout",
+		models.NewTemplateData(data),
+	)
 
-	return repo.emailService.SendEmail(ctx, user.Email, "Verify your email", buffer.String())
+	repo.emailService.SendEmail(ctx, user.Email, "Verify your email", buffer.String())
 }
 
-func (repo *AuthRepository) CreateRootUser(ctx context.Context, email, password string) error {
+func (repo *AuthRepository) CreateRootUser(
+	ctx context.Context,
+	email, password string,
+) *services.AuthServiceError {
 	encodedHash, err := createHash(repo.passwordConfig, password)
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	_, err = repo.userDao.CreateUser(ctx, ROOT_NAME, email, encodedHash, true)
-	return err
+
+	if err == database.Duplicate {
+		return services.EmailAlreadyInUse
+	}
+
+	if err != nil {
+		panic(err)
+	}
+
+	return nil
 }
 
 func (repo *AuthRepository) ChangePassword(
 	ctx context.Context,
 	id, currentPassword, newPassword string,
-) error {
+) *services.AuthServiceError {
 	user, err := repo.userDao.FindById(ctx, id)
+
+	if err == database.NotFound {
+		return services.AccountNotFound
+	}
+
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	ok, err := comparePasswords(currentPassword, user.HashedPassword)
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	if ok {
 		encodedHash, err := createHash(repo.passwordConfig, newPassword)
 		if err != nil {
-			return err
+			panic(err)
 		}
 
-		return repo.userDao.ChangePassword(ctx, id, encodedHash)
+		err = repo.userDao.ChangePassword(ctx, id, encodedHash)
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		return services.InvalidPassword
 	}
 
-	return fmt.Errorf("Invalid User Credentials")
+	return nil
 }
 
 func (repo *AuthRepository) ChangePasswordWithToken(
 	ctx context.Context,
 	id, token, newPassword string,
-) error {
+) *services.AuthServiceError {
 	err := repo.passwordForgotService.Verify(ctx, id, token)
-	if err != nil {
-		return err
+	if err == services.InvalidToken {
+		return services.InvalidPasswordToken
 	}
 
-	encodedHash, err := createHash(repo.passwordConfig, newPassword)
 	if err != nil {
-		return err
+		panic(err)
 	}
 
-	return repo.userDao.ChangePassword(ctx, id, encodedHash)
+	encodedHash, hashErr := createHash(repo.passwordConfig, newPassword)
+	if hashErr != nil {
+		panic(hashErr)
+	}
+
+	daoErr := repo.userDao.ChangePassword(ctx, id, encodedHash)
+	if daoErr != nil {
+		panic(daoErr)
+	}
+
+	return nil
 }
 
-func (repo *AuthRepository) VerifyUser(ctx context.Context, id, token string) error {
+func (repo *AuthRepository) VerifyUser(
+	ctx context.Context,
+	id, token string,
+) *services.AuthServiceError {
 	err := repo.verifyTokenService.Verify(ctx, id, token)
 
 	if err != nil {
-		return err
+		return services.InvalidRegistrationToken
 	}
 
-	return repo.userDao.VerifyUser(ctx, id)
+	daoErr := repo.userDao.VerifyUser(ctx, id)
+	if daoErr != nil {
+		panic(daoErr)
+	}
+	return nil
 }
 
-func (repo *AuthRepository) CreateForgotPasswordToken(ctx context.Context, email string) error {
+func (repo *AuthRepository) CreateForgotPasswordToken(
+	ctx context.Context,
+	email string,
+) *services.AuthServiceError {
 	user, err := repo.userDao.FindByEmail(ctx, email)
-	if err != nil {
-		return err
+	if err == database.NotFound {
+		return services.AccountNotFound
 	}
 
-	token, err := repo.passwordForgotService.Create(ctx, user.Id)
+	if err != nil {
+		panic(err)
+	}
+
+	token := repo.passwordForgotService.Create(ctx, user.Id)
 
 	buffer := bytes.Buffer{}
 	data := EmailWithTokenData{token, user.Id}
-	repo.templateService.Render(&buffer, "forgot_password_email.html", "layout", models.NewTemplateData(data))
+	repo.templateService.Render(
+		&buffer,
+		"forgot_password_email.html",
+		"layout",
+		models.NewTemplateData(data),
+	)
 
-	return repo.emailService.SendEmail(
+	repo.emailService.SendEmail(
 		ctx,
 		user.Email,
 		"Reset your password email",
 		buffer.String(),
 	)
+
+	return nil
 }
 
-func (repo *AuthRepository) InviteUser(ctx context.Context, email string) error {
-	if _, err := repo.userDao.FindByEmail(ctx, email); err != database.NotFound{
+func (repo *AuthRepository) InviteUser(
+	ctx context.Context,
+	email string,
+) *services.AuthServiceError {
+	if _, err := repo.userDao.FindByEmail(ctx, email); err != database.NotFound {
 		return nil
 	}
 
 	user := ctx.Value("user").(*models.User)
 
 	newId := uuid.New().String()
-	token, err := repo.inviteTokenService.CreateWithClaims(
+	token := repo.inviteTokenService.CreateWithClaims(
 		ctx,
 		newId,
 		&models.InviteData{InvitedBy: user.UserId, Email: email},
 	)
-	if err != nil {
-		return err
-	}
 
 	buffer := bytes.Buffer{}
 	data := EmailWithTokenData{token, newId}
-	repo.templateService.Render(&buffer, "invite_email.html", "layout", models.NewTemplateData(data))
+	repo.templateService.Render(
+		&buffer,
+		"invite_email.html",
+		"layout",
+		models.NewTemplateData(data),
+	)
 
-	return repo.emailService.SendEmail(ctx, email, "You have been invited", buffer.String())
+	repo.emailService.SendEmail(ctx, email, "You have been invited", buffer.String())
+
+	return nil
 }
 
-func (repo *AuthRepository) VerifyInvite(ctx context.Context, id, token string, predicate func(*models.InviteData) bool) (bool, error) {
+func (repo *AuthRepository) VerifyInvite(
+	ctx context.Context,
+	id, token string,
+	predicate func(*models.InviteData) bool,
+) *services.AuthServiceError {
 	var inviteData models.InviteData
 	err := repo.inviteTokenService.VerifyWithClaims(ctx, id, token, &inviteData)
 	if err != nil {
-		return false, err
+		return services.InvalidInviteToken
 	}
 
 	if !predicate(&inviteData) {
-		return false, nil
-	} else {
-		err = repo.inviteTokenService.Destroy(ctx, id)
-		if err != nil {
-			return false, err
-		}
+		return services.InvalidInviteToken
 	}
 
-	return true, nil
+	return nil
+}
+
+func (repo *AuthRepository) InvalidateInvite(
+	ctx context.Context,
+	id string,
+) *services.AuthServiceError {
+	repo.inviteTokenService.Destroy(ctx, id)
+	return nil
 }
 
 // var _ services.AuthService = (*AuthRepository)(nil)

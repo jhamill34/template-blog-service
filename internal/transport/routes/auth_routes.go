@@ -1,11 +1,11 @@
 package routes
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jhamill34/notion-provisioner/internal/config"
-	"github.com/jhamill34/notion-provisioner/internal/database"
 	"github.com/jhamill34/notion-provisioner/internal/models"
 	"github.com/jhamill34/notion-provisioner/internal/services"
 	"github.com/jhamill34/notion-provisioner/internal/transport/middleware"
@@ -154,7 +154,12 @@ func (self *AuthRoutes) Home() http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
-		self.templateService.Render(w, "home.html", "layout", models.NewTemplateData(user))
+		self.templateService.Render(
+			w,
+			"home.html",
+			"layout",
+			models.NewTemplate(user, utils.GetNotifications(r)),
+		)
 	}
 }
 
@@ -174,7 +179,7 @@ func (self *AuthRoutes) Register() http.HandlerFunc {
 			w,
 			"register.html",
 			"layout",
-			models.NewTemplateData(RegisterData{token, id}),
+			models.NewTemplate(RegisterData{token, id}, utils.GetNotifications(r)),
 		)
 	}
 }
@@ -185,10 +190,12 @@ func (self *AuthRoutes) ProcessRegister() http.HandlerFunc {
 		username := r.FormValue("username")
 		password := r.FormValue("password")
 		confirmPassword := r.FormValue("confirm_password")
+
 		token := r.FormValue("token")
 		id := r.FormValue("id")
+		url := fmt.Sprintf("/auth/register?token=%s&id=%s", token, id)
 
-		ok, err := self.authService.VerifyInvite(
+		err := self.authService.VerifyInvite(
 			r.Context(),
 			id,
 			token,
@@ -197,28 +204,30 @@ func (self *AuthRoutes) ProcessRegister() http.HandlerFunc {
 			},
 		)
 		if err != nil {
-			panic(err)
-		}
-
-		if !ok {
-			w.WriteHeader(http.StatusBadRequest)
+			utils.SetNotifications(w, err, "/auth/register", self.notificationConfig.Timeout)
+			http.Redirect(w, r, url, http.StatusFound)
 			return
 		}
 
 		if password != confirmPassword {
-			w.WriteHeader(http.StatusBadRequest)
+			utils.SetNotifications(
+				w,
+				services.PasswordMismatch,
+				"/auth/register",
+				self.notificationConfig.Timeout,
+			)
+			http.Redirect(w, r, url, http.StatusFound)
 			return
 		}
 
 		err = self.authService.CreateUser(r.Context(), username, email, password)
-		if err == database.Duplicate {
-			w.WriteHeader(http.StatusBadRequest)
+		if err != nil {
+			utils.SetNotifications(w, err, "/auth/register", self.notificationConfig.Timeout)
+			http.Redirect(w, r, url, http.StatusFound)
 			return
 		}
 
-		if err != nil {
-			panic(err)
-		}
+		self.authService.InvalidateInvite(r.Context(), id)
 
 		http.Redirect(w, r, "/auth/login", http.StatusFound)
 	}
@@ -230,13 +239,17 @@ func (self *AuthRoutes) VerifyEmail() http.HandlerFunc {
 		id := r.URL.Query().Get("id")
 
 		if token == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		err := self.authService.VerifyUser(r.Context(), id, token)
-		if err != nil {
-			panic(err)
+			utils.SetNotifications(
+				w,
+				services.InvalidRegistrationToken,
+				"/auth/login",
+				self.notificationConfig.Timeout,
+			)
+		} else {
+			err := self.authService.VerifyUser(r.Context(), id, token)
+			if err != nil {
+				utils.SetNotifications(w, err, "/auth/login", self.notificationConfig.Timeout)
+			}
 		}
 
 		http.Redirect(w, r, "/auth/login", http.StatusFound)
@@ -250,13 +263,20 @@ func (self *AuthRoutes) ResendEmail() http.HandlerFunc {
 		if email == "" {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.WriteHeader(http.StatusOK)
-			self.templateService.Render(w, "resend_email.html", "layout", models.NewTemplateEmpty())
+			self.templateService.Render(
+				w,
+				"resend_email.html",
+				"layout",
+				models.NewTemplateError(utils.GetNotifications(r)),
+			)
 			return
 		}
 
 		err := self.authService.ResendVerifyEmail(r.Context(), email)
 		if err != nil {
-			panic(err)
+			utils.SetNotifications(w, err, "/auth/verify/resend", self.notificationConfig.Timeout)
+			http.Redirect(w, r, "/auth/verify/resend", http.StatusFound)
+			return
 		}
 
 		http.Redirect(w, r, "/auth/login", http.StatusFound)
@@ -292,7 +312,7 @@ func (self *AuthRoutes) ChangePassword() http.HandlerFunc {
 			w,
 			"change_password.html",
 			"layout",
-			models.NewTemplateData(data),
+			models.NewTemplate(data, utils.GetNotifications(r)),
 		)
 	}
 }
@@ -303,9 +323,24 @@ func (self *AuthRoutes) ProcessChangePassword() http.HandlerFunc {
 
 		newPassword := r.FormValue("new_password")
 		confirmPassword := r.FormValue("confirm_password")
+			
+		token := r.FormValue("token")
+		id := r.FormValue("id")
+		var url string
+		if user == nil {
+			url = fmt.Sprintf("/auth/password/change?token=%s&id=%s", token, id)
+		} else {
+			url = "/auth/password/change"
+		}
 
 		if newPassword != confirmPassword {
-			w.WriteHeader(http.StatusBadRequest)
+			utils.SetNotifications(
+				w,
+				services.PasswordMismatch,
+				"/auth/password/change",
+				self.notificationConfig.Timeout,
+			)
+			http.Redirect(w, r, url, http.StatusFound)
 			return
 		}
 
@@ -320,14 +355,16 @@ func (self *AuthRoutes) ProcessChangePassword() http.HandlerFunc {
 				newPassword,
 			)
 			if err != nil {
-				panic(err)
+				utils.SetNotifications(
+					w,
+					err,
+					"/auth/password/change",
+					self.notificationConfig.Timeout,
+				)
+				http.Redirect(w, r, url, http.StatusFound)
+				return
 			}
-
-			http.Redirect(w, r, "/auth/home", http.StatusFound)
 		} else {
-			token := r.FormValue("token")
-			id := r.FormValue("id")
-
 			err := self.authService.ChangePasswordWithToken(
 				r.Context(),
 				id,
@@ -335,11 +372,12 @@ func (self *AuthRoutes) ProcessChangePassword() http.HandlerFunc {
 				newPassword,
 			)
 			if err != nil {
-				panic(err)
+				utils.SetNotifications(w, err, "/auth/password/change", self.notificationConfig.Timeout)
+				http.Redirect(w, r, url, http.StatusFound)
+				return
 			}
-
-			http.Redirect(w, r, "/auth/login", http.StatusFound)
 		}
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
 	}
 }
 
@@ -347,20 +385,19 @@ func (self *AuthRoutes) ForgotPassword() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
-		self.templateService.Render(w, "forgot_password.html", "layout", models.NewTemplateEmpty())
+		self.templateService.Render(
+			w,
+			"forgot_password.html",
+			"layout",
+			models.NewTemplateError(utils.GetNotifications(r)),
+		)
 	}
 }
 
 func (self *AuthRoutes) ProcessForgotPassword() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		email := r.FormValue("email")
-
-		err := self.authService.CreateForgotPasswordToken(r.Context(), email)
-
-		if err != nil {
-			panic(err)
-		}
-
+		self.authService.CreateForgotPasswordToken(r.Context(), email)
 		http.Redirect(w, r, "/auth/login", http.StatusFound)
 	}
 }
@@ -369,7 +406,12 @@ func (self *AuthRoutes) Invite() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
-		self.templateService.Render(w, "invite_user.html", "layout", models.NewTemplateEmpty())
+		self.templateService.Render(
+			w,
+			"invite_user.html",
+			"layout",
+			models.NewTemplateError(utils.GetNotifications(r)),
+		)
 	}
 }
 
@@ -380,7 +422,9 @@ func (self *AuthRoutes) ProcessInvite() http.HandlerFunc {
 		err := self.authService.InviteUser(r.Context(), email)
 
 		if err != nil {
-			panic(err)
+			utils.SetNotifications(w, err, "/auth/invite", self.notificationConfig.Timeout)
+			http.Redirect(w, r, "/auth/invite", http.StatusFound)
+			return
 		}
 
 		http.Redirect(w, r, "/auth/home", http.StatusFound)

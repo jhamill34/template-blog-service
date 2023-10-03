@@ -13,10 +13,8 @@ func (*MockEmailService) SendEmail(
 	to string,
 	subject string,
 	body string,
-) error {
+) {
 	fmt.Printf("Sending email to %s with subject %s\n\n%s\n", to, subject, body)
-
-	return nil
 }
 
 // var _ services.EmailService = (*MockEmailService)(nil)
