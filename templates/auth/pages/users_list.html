@@ -1,0 +1,24 @@
+{{ define "title" }}
+List Users
+{{ end }}
+
+{{ define "content" }}
+<div>
+	<table>
+		<thead>
+			<tr>
+				<th>Email</th>
+				<th>UserId</th>
+			</tr>
+		</thead>
+		<tbody>
+			{{ range . }}
+			<tr>
+				<td>{{ .Email }}</td>
+				<td>{{ .UserId }}</td>
+			</tr>
+			{{ end }}
+		</tbody>
+	</table>
+</div>
+{{ end }}

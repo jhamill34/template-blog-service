@@ -14,13 +14,18 @@ type AuthService interface {
 	InviteUser(ctx context.Context, fromUserId, email string) *AuthServiceError
 	InvalidateInvite(ctx context.Context, id string) *AuthServiceError
 	ResendVerifyEmail(ctx context.Context, email string) *AuthServiceError  
-	GetUserByEmail(ctx context.Context, email string) (*models.User, *AuthServiceError)
-	GetUserByUsername(ctx context.Context, username string) (*models.User, *AuthServiceError)
 	CreateRootUser(ctx context.Context, email, password string) *AuthServiceError
 	ChangePassword(ctx context.Context, id, currentPassword, newPassword string) *AuthServiceError
 	ChangePasswordWithToken(ctx context.Context, id, token, newPassword string) *AuthServiceError
 	VerifyUser(ctx context.Context, id, token string) *AuthServiceError
 	CreateForgotPasswordToken(ctx context.Context, email string) *AuthServiceError 
+
+	GetUserByEmail(ctx context.Context, email string) (*models.User, *AuthServiceError)
+	GetUserByUsername(ctx context.Context, username string) (*models.User, *AuthServiceError)
+}
+
+type UserService interface {
+	ListUsers(ctx context.Context) []models.User
 }
 
 type VerifyTokenService interface {

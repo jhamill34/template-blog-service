@@ -177,3 +177,21 @@ func (dao *UserDao) GetPermissions(ctx context.Context, id string) ([]database.U
 	return permissions, nil
 }
 
+func (dao *UserDao) ListUsers(ctx context.Context) ([]database.UserEntity, error) {
+	db := dao.databaseProvider.Get()
+
+	var users []database.UserEntity
+	err := db.SelectContext(ctx, &users, `
+		SELECT 
+			id, name, email, verified, created_at, updated_at 
+		FROM 
+			user
+	`)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}
+

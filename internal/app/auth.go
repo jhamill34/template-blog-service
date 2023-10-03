@@ -74,6 +74,8 @@ func ConfigureAuth() *Auth {
 	permissionModel := config.LoadRbacModel("configs/rbac_model.conf")
 	accessControlService := rbac.NewCasbinAccessControl(permissionModel, userDao)
 
+	userService := repositories.NewUserRepository(userDao, accessControlService)
+
 	return &Auth{
 		server: transport.NewServer(
 			cfg.General.Server,
@@ -88,6 +90,11 @@ func ConfigureAuth() *Auth {
 			routes.NewOauthRoutes(
 				sessionStore,
 				templateRepository,
+			),
+			routes.NewUserRoutes(
+				sessionStore,
+				templateRepository,
+				userService,
 			),
 		),
 		cleanup: func(_ context.Context) {
