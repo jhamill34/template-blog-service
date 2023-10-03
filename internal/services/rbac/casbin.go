@@ -72,7 +72,7 @@ func (self *CasbinAccessControl) Enforce(
 	resource string,
 	action string,
 ) *services.AccessControlError {
-	user := ctx.Value("user").(*models.User)
+	user := ctx.Value("user").(*models.SessionData)
 
 	principle := fmt.Sprintf("u_%s", user.UserId)
 

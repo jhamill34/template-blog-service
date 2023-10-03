@@ -8,10 +8,10 @@ import (
 )
 
 type AuthService interface {
-	LoginUser(ctx context.Context, email string, password string) (*models.User, *AuthServiceError)
+	LoginUser(ctx context.Context, email string, password string) (*models.SessionData, *AuthServiceError)
 	CreateUser(ctx context.Context, username, email, password string) *AuthServiceError
 	VerifyInvite(ctx context.Context, id, token string, predicate func(*models.InviteData) bool) *AuthServiceError
-	InviteUser(ctx context.Context, email string) *AuthServiceError
+	InviteUser(ctx context.Context, fromUserId, email string) *AuthServiceError
 	InvalidateInvite(ctx context.Context, id string) *AuthServiceError
 	ResendVerifyEmail(ctx context.Context, email string) *AuthServiceError  
 	GetUserByEmail(ctx context.Context, email string) (*models.User, *AuthServiceError)
@@ -35,9 +35,10 @@ type TokenClaimsService interface {
 } 
 
 type SessionService interface {
-	Create(ctx context.Context, data interface{}) (string, error)
-	Destroy(ctx context.Context, id string) error
-	Find(ctx context.Context, id string, data interface{}) error
+	Create(ctx context.Context, data *models.SessionData) string
+	Find(ctx context.Context, id string, data *models.SessionData) *SessionError
+	Update(ctx context.Context, data *models.SessionData) *SessionError 
+	Destroy(ctx context.Context, id string) 
 }
 
 type TemplateService interface {

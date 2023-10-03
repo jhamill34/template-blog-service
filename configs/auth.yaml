@@ -8,6 +8,8 @@ password_config:
   parallelism: 4
   hash_length: 32
   salt_length: 16
+
+  # TODO: Environment Variable?
   secret: SECRET
 
 verify_ttl: 300s
@@ -17,6 +19,9 @@ invite_ttl: 86400s
 session:
   ttl: 3600s 
   cookie_ttl: 86400s 
+
+  # TODO: Environment Variable?
+  key: SESSIONSECRET
 
 general:
   server:

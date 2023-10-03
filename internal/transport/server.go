@@ -38,7 +38,7 @@ func NewServer(
 ) Server {
 	router := chi.NewRouter()
 
-	// TODO: CORS? 
+	// TODO: Add header for Content Security Policy (CSP)? 
 	router.Use(middleware.RequestID)
 	router.Use(middleware.RealIP)
 	router.Use(middleware.Logger)

@@ -46,6 +46,23 @@ var TokenNotFound *TokenError = NewTokenError("Token not found")
 
 //==================================================
 
+type SessionError struct {
+	Message string
+}
+
+func (self *SessionError) Notify() *models.Notification {
+	return &models.Notification{Message: self.Message}
+}
+
+func NewSessionError(message string) *SessionError {
+	return &SessionError{Message: message}
+}
+
+var SessionNotFound *SessionError = NewSessionError("Session not found")
+var MalformedSession *SessionError = NewSessionError("Malformed Session")
+
+//==================================================
+
 type AccessControlError struct {
 	Message string
 }

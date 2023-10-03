@@ -1,9 +1,9 @@
 package models
 
 type User struct {
-	UserId string `json:"user_id" redis:"user_id"`
-	Name   string `json:"name"    redis:"name"`
-	Email  string `json:"email"   redis:"email"`
+	UserId string `json:"user_id"`
+	Name   string `json:"name"`
+	Email  string `json:"email"`
 }
 
 type InviteData struct {
@@ -17,4 +17,12 @@ type Notifier interface {
 
 type Notification struct {
 	Message string `json:"message"`
+}
+
+type SessionData struct {
+	SessionId string `json:"session_id"`
+	UserId    string `json:"user_id"`
+	Name      string `json:"name"`
+	Email     string `json:"email"`
+	CsrfToken string `json:"csrf_token"`
 }

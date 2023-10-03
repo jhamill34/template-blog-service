@@ -49,7 +49,7 @@ func NewAuthRepository(
 func (repo *AuthRepository) LoginUser(
 	ctx context.Context,
 	email, password string,
-) (*models.User, *services.AuthServiceError) {
+) (*models.SessionData, *services.AuthServiceError) {
 	password = strings.TrimSpace(password)
 	user, err := repo.userDao.FindByEmail(ctx, email)
 
@@ -74,10 +74,12 @@ func (repo *AuthRepository) LoginUser(
 		return nil, services.UnverifiedUser
 	}
 
-	return &models.User{
-		UserId: user.Id,
-		Name:   user.Name,
-		Email:  user.Email,
+	return &models.SessionData{
+		SessionId: uuid.New().String(),
+		UserId:    user.Id,
+		Name:      user.Name,
+		Email:     user.Email,
+		CsrfToken: uuid.New().String(),
 	}, nil
 }
 
@@ -332,19 +334,18 @@ func (repo *AuthRepository) CreateForgotPasswordToken(
 
 func (repo *AuthRepository) InviteUser(
 	ctx context.Context,
+	fromUserId,
 	email string,
 ) *services.AuthServiceError {
 	if _, err := repo.userDao.FindByEmail(ctx, email); err != database.NotFound {
 		return nil
 	}
 
-	user := ctx.Value("user").(*models.User)
-
 	newId := uuid.New().String()
 	token := repo.inviteTokenService.CreateWithClaims(
 		ctx,
 		newId,
-		&models.InviteData{InvitedBy: user.UserId, Email: email},
+		&models.InviteData{InvitedBy: fromUserId, Email: email},
 	)
 
 	buffer := bytes.Buffer{}

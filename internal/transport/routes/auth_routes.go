@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/jhamill34/notion-provisioner/internal/config"
 	"github.com/jhamill34/notion-provisioner/internal/models"
 	"github.com/jhamill34/notion-provisioner/internal/services"
@@ -55,11 +56,9 @@ func (r *AuthRoutes) Routes() (string, http.Handler) {
 		router.Get("/verify", r.VerifyEmail())
 		router.Get("/verify/resend", r.ResendEmail())
 
-		// TODO: Feature flag
 		group.Get("/register", r.Register())
 		group.Post("/register", r.ProcessRegister())
 
-		// TODO: Feature flag
 		group.Get("/password/forgot", r.ForgotPassword())
 		group.Post("/password/forgot", r.ProcessForgotPassword())
 	})
@@ -116,10 +115,7 @@ func (self *AuthRoutes) ProcessLogin() http.HandlerFunc {
 		user, err := self.authService.LoginUser(r.Context(), username, password)
 
 		if err == nil {
-			id, err := self.sessionService.Create(r.Context(), user)
-			if err != nil {
-				panic(err)
-			}
+			id := self.sessionService.Create(r.Context(), user)
 
 			http.SetCookie(w, utils.SessionCookie(id, self.sessionConfig.CookieTTL))
 			http.SetCookie(w, utils.ReturnToPostLoginCookie("", 0)) // Delete the cookie
@@ -153,7 +149,7 @@ func (self *AuthRoutes) Logout() http.HandlerFunc {
 
 func (self *AuthRoutes) Home() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		user := r.Context().Value("user").(*models.User)
+		user := r.Context().Value("user").(*models.SessionData)
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
@@ -292,7 +288,7 @@ type tokenData struct {
 }
 
 type changePasswordAnonymousData struct {
-	User      *models.User
+	User      *models.SessionData
 	TokenData *tokenData
 }
 
@@ -305,7 +301,7 @@ func (self *AuthRoutes) ChangePassword() http.HandlerFunc {
 
 		var data changePasswordAnonymousData
 		if user != nil {
-			data = changePasswordAnonymousData{TokenData: nil, User: user.(*models.User)}
+			data = changePasswordAnonymousData{TokenData: nil, User: user.(*models.SessionData)}
 		} else {
 			token := r.URL.Query().Get("token")
 			userId := r.URL.Query().Get("id")
@@ -348,8 +344,20 @@ func (self *AuthRoutes) ProcessChangePassword() http.HandlerFunc {
 		}
 
 		if user != nil {
-			user := user.(*models.User)
+			user := user.(*models.SessionData)
 			currentPassword := r.FormValue("current_password")
+			csrfToken := r.FormValue("csrf_token")
+
+			if csrfToken != user.CsrfToken {
+				utils.SetNotifications(
+					w,
+					utils.NewGenericMessage("Bad request, try again"),
+					"/auth/password/change",
+					self.notificationConfig.Timeout,
+				)
+				http.Redirect(w, r, url, http.StatusFound)
+				return
+			}
 
 			err := self.authService.ChangePassword(
 				r.Context(),
@@ -366,6 +374,12 @@ func (self *AuthRoutes) ProcessChangePassword() http.HandlerFunc {
 				)
 				http.Redirect(w, r, url, http.StatusFound)
 				return
+			}
+
+			user.CsrfToken = uuid.New().String()
+			self.sessionService.Update(r.Context(), user)
+			if err != nil {
+				panic(err)
 			}
 		} else {
 			err := self.authService.ChangePasswordWithToken(
@@ -407,13 +421,20 @@ func (self *AuthRoutes) ProcessForgotPassword() http.HandlerFunc {
 
 func (self *AuthRoutes) Invite() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		user := r.Context().Value("user").(*models.SessionData)
+
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		self.templateService.Render(
 			w,
 			"invite_user.html",
 			"layout",
-			models.NewTemplateError(utils.GetNotifications(r)),
+			models.NewTemplate(
+				map[string]interface{} { 
+					"CsrfToken": user.CsrfToken, 
+				},
+				utils.GetNotifications(r),
+			),
 		)
 	}
 }
@@ -422,20 +443,41 @@ func (self *AuthRoutes) ProcessInvite() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		accessControlErr := self.accessControlService.Enforce(r.Context(), "invite", "send")
 		if accessControlErr != nil {
-			utils.SetNotifications(w, accessControlErr, "/auth/invite", self.notificationConfig.Timeout)
+			utils.SetNotifications(
+				w,
+				accessControlErr,
+				"/auth/invite",
+				self.notificationConfig.Timeout,
+			)
+			http.Redirect(w, r, "/auth/invite", http.StatusFound)
+			return
+		}
+
+		session := r.Context().Value("user").(*models.SessionData)
+		email := r.FormValue("email")
+		csrfToken := r.FormValue("csrf_token")
+
+		if csrfToken != session.CsrfToken {
+			utils.SetNotifications(
+				w,
+				utils.NewGenericMessage("Bad request, try again"),
+				"/auth/invite",
+				self.notificationConfig.Timeout,
+			)
 			http.Redirect(w, r, "/auth/invite", http.StatusFound)
 			return 
 		}
 
-		email := r.FormValue("email")
-
-		err := self.authService.InviteUser(r.Context(), email)
+		err := self.authService.InviteUser(r.Context(), session.UserId, email)
 
 		if err != nil {
 			utils.SetNotifications(w, err, "/auth/invite", self.notificationConfig.Timeout)
 			http.Redirect(w, r, "/auth/invite", http.StatusFound)
 			return
 		}
+
+		session.CsrfToken = uuid.New().String()
+		self.sessionService.Update(r.Context(), session)
 
 		http.Redirect(w, r, "/auth/home", http.StatusFound)
 	}

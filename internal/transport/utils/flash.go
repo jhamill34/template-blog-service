@@ -12,6 +12,18 @@ import (
 
 const NOTIFICATION_COOKIE_NAME = "notifications"
 
+type GenericNotifier struct {
+	Message string
+}
+
+func NewGenericMessage(message string) *GenericNotifier {
+	return &GenericNotifier{Message: message}
+}
+
+func (self *GenericNotifier) Notify() *models.Notification {
+	return &models.Notification{Message: self.Message}
+}
+
 var NotificationNotFound = errors.New("Notification cookie not found")
 
 func GetNotifications(r *http.Request) *models.Notification {
@@ -38,7 +50,12 @@ func GetNotifications(r *http.Request) *models.Notification {
 	return &notification
 }
 
-func SetNotifications(w http.ResponseWriter, notifier models.Notifier, scope string, dur time.Duration) error {
+func SetNotifications(
+	w http.ResponseWriter,
+	notifier models.Notifier,
+	scope string,
+	dur time.Duration,
+) error {
 	data, err := json.Marshal(notifier.Notify())
 	if err != nil {
 		return err

@@ -38,7 +38,7 @@ func ConfigureAuth() *Auth {
 		Password: cfg.General.Redis.Password,
 	})
 
-	sessionStore := session.NewRedisSessionStore(redisClient, cfg.Session.TTL)
+	sessionStore := session.NewRedisSessionStore(redisClient, cfg.Session.TTL, cfg.Session.SigningKey)
 	verifyTokenRepository := repositories.NewHashedVerifyTokenRepository(
 		redisClient,
 		cfg.VerifyTTL,

@@ -31,10 +31,10 @@ func (m *AuthorizeMiddleware) AuthorizeMiddleware(next http.Handler) http.Handle
 			return
 		}
 
-		var sessionData models.User
+		var sessionData models.SessionData
 		sessionId := cookie.Value
-		err = m.sessionService.Find(r.Context(), sessionId, &sessionData)
-		if err != nil {
+		sessionErr := m.sessionService.Find(r.Context(), sessionId, &sessionData)
+		if sessionErr != nil {
 			http.SetCookie(w, utils.SessionCookie("", 0))
 			next.ServeHTTP(w, r)
 			return

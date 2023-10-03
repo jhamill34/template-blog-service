@@ -32,8 +32,9 @@ type AuthConfig struct {
 }
 
 type SessionConfig struct {
-	TTL       time.Duration `yaml:"ttl"`
-	CookieTTL time.Duration `yaml:"cookie_ttl"`
+	TTL        time.Duration `yaml:"ttl"`
+	CookieTTL  time.Duration `yaml:"cookie_ttl"`
+	SigningKey []byte        `yaml:"signing_key"`
 }
 
 func LoadAuthConfig(filename string) (AuthConfig, error) {
