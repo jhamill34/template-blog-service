@@ -71,7 +71,7 @@ func (self *CasbinAccessControl) Enforce(
 	ctx context.Context,
 	resource string,
 	action string,
-) *services.AccessControlError {
+) models.Notifier {
 	user := ctx.Value("user").(*models.SessionData)
 
 	principle := fmt.Sprintf("u_%s", user.UserId)

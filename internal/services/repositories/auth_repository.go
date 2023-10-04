@@ -49,7 +49,7 @@ func NewAuthRepository(
 func (repo *AuthRepository) LoginUser(
 	ctx context.Context,
 	email, password string,
-) (*models.SessionData, *services.AuthServiceError) {
+) (*models.SessionData, models.Notifier) {
 	password = strings.TrimSpace(password)
 	user, err := repo.userDao.FindByEmail(ctx, email)
 
@@ -86,7 +86,7 @@ func (repo *AuthRepository) LoginUser(
 func (repo *AuthRepository) GetUserByEmail(
 	ctx context.Context,
 	email string,
-) (*models.User, *services.AuthServiceError) {
+) (*models.User, models.Notifier) {
 	user, err := repo.userDao.FindByEmail(ctx, email)
 
 	if err == database.NotFound {
@@ -107,7 +107,7 @@ func (repo *AuthRepository) GetUserByEmail(
 func (repo *AuthRepository) GetUserByUsername(
 	ctx context.Context,
 	username string,
-) (*models.User, *services.AuthServiceError) {
+) (*models.User, models.Notifier) {
 	user, err := repo.userDao.FindByUsername(ctx, username)
 
 	if err == database.NotFound {
@@ -128,7 +128,7 @@ func (repo *AuthRepository) GetUserByUsername(
 func (repo *AuthRepository) CreateUser(
 	ctx context.Context,
 	username, email, password string,
-) *services.AuthServiceError {
+) models.Notifier {
 	if username == ROOT_NAME {
 		return services.EmailAlreadyInUse
 	}
@@ -156,7 +156,7 @@ func (repo *AuthRepository) CreateUser(
 func (repo *AuthRepository) ResendVerifyEmail(
 	ctx context.Context,
 	email string,
-) *services.AuthServiceError {
+) models.Notifier {
 	user, err := repo.userDao.FindByEmail(ctx, email)
 	if err == database.NotFound {
 		return services.AccountNotFound
@@ -201,7 +201,7 @@ func (repo *AuthRepository) sendVerifyEmail(
 func (repo *AuthRepository) CreateRootUser(
 	ctx context.Context,
 	email, password string,
-) *services.AuthServiceError {
+) models.Notifier {
 	encodedHash, err := createHash(repo.passwordConfig, password)
 	if err != nil {
 		panic(err)
@@ -223,7 +223,7 @@ func (repo *AuthRepository) CreateRootUser(
 func (repo *AuthRepository) ChangePassword(
 	ctx context.Context,
 	id, currentPassword, newPassword string,
-) *services.AuthServiceError {
+) models.Notifier {
 	user, err := repo.userDao.FindById(ctx, id)
 
 	if err == database.NotFound {
@@ -259,7 +259,7 @@ func (repo *AuthRepository) ChangePassword(
 func (repo *AuthRepository) ChangePasswordWithToken(
 	ctx context.Context,
 	id, token, newPassword string,
-) *services.AuthServiceError {
+) models.Notifier {
 	err := repo.passwordForgotService.Verify(ctx, id, token)
 	if err == services.InvalidToken {
 		return services.InvalidPasswordToken
@@ -285,7 +285,7 @@ func (repo *AuthRepository) ChangePasswordWithToken(
 func (repo *AuthRepository) VerifyUser(
 	ctx context.Context,
 	id, token string,
-) *services.AuthServiceError {
+) models.Notifier {
 	err := repo.verifyTokenService.Verify(ctx, id, token)
 
 	if err != nil {
@@ -302,7 +302,7 @@ func (repo *AuthRepository) VerifyUser(
 func (repo *AuthRepository) CreateForgotPasswordToken(
 	ctx context.Context,
 	email string,
-) *services.AuthServiceError {
+) models.Notifier {
 	user, err := repo.userDao.FindByEmail(ctx, email)
 	if err == database.NotFound {
 		return services.AccountNotFound
@@ -337,7 +337,7 @@ func (repo *AuthRepository) InviteUser(
 	ctx context.Context,
 	fromUserId,
 	email string,
-) *services.AuthServiceError {
+) models.Notifier {
 	if _, err := repo.userDao.FindByEmail(ctx, email); err != database.NotFound {
 		return nil
 	}
@@ -367,7 +367,7 @@ func (repo *AuthRepository) VerifyInvite(
 	ctx context.Context,
 	id, token string,
 	predicate func(*models.InviteData) bool,
-) *services.AuthServiceError {
+) models.Notifier {
 	var inviteData models.InviteData
 	err := repo.inviteTokenService.VerifyWithClaims(ctx, id, token, &inviteData)
 	if err != nil {
@@ -384,7 +384,7 @@ func (repo *AuthRepository) VerifyInvite(
 func (repo *AuthRepository) InvalidateInvite(
 	ctx context.Context,
 	id string,
-) *services.AuthServiceError {
+) models.Notifier {
 	repo.inviteTokenService.Destroy(ctx, id)
 	return nil
 }

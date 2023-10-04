@@ -68,7 +68,7 @@ func (self *RedisSessionStore) Find(
 	ctx context.Context,
 	id string,
 	result *models.SessionData,
-) *services.SessionError {
+) models.Notifier {
 	var err error
 	key := PREFIX + id
 
@@ -111,7 +111,7 @@ func (self *RedisSessionStore) Find(
 func (self *RedisSessionStore) Update(
 	ctx context.Context,
 	data *models.SessionData,
-) *services.SessionError {
+) models.Notifier {
 	var err error
 	key := PREFIX + data.SessionId
 

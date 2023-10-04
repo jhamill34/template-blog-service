@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jhamill34/notion-provisioner/internal/config"
+	"github.com/jhamill34/notion-provisioner/internal/models"
 	"github.com/jhamill34/notion-provisioner/internal/services"
 	"github.com/redis/go-redis/v9"
 )
@@ -65,7 +66,7 @@ func (self *HashedVerifyTokenRepository) Create(
 func (self *HashedVerifyTokenRepository) Verify(
 	ctx context.Context,
 	id, token string,
-) *services.TokenError {
+) models.Notifier {
 	hashedToken, err := self.redisClient.Get(ctx, string(self.prefix)+id).Result()
 	if err == redis.Nil {
 		return services.TokenNotFound
@@ -130,7 +131,7 @@ func (self *HashedVerifyTokenRepository) VerifyWithClaims(
 	id string,
 	token string,
 	data interface{},
-) *services.TokenError {
+) models.Notifier {
 	hashedToken, err := self.redisClient.Get(ctx, string(self.prefix)+id).Result()
 	if err == redis.Nil {
 		return services.TokenNotFound

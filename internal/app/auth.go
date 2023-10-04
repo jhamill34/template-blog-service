@@ -93,6 +93,7 @@ func ConfigureAuth() *Auth {
 				templateRepository,
 			),
 			routes.NewUserRoutes(
+				cfg.General.Notifications,
 				sessionStore,
 				templateRepository,
 				userService,

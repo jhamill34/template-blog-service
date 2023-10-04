@@ -24,7 +24,11 @@ func NewUserRepository(
 }
 
 // ListUsers implements services.UserService.
-func (self *UserRepository) ListUsers(ctx context.Context) []models.User {
+func (self *UserRepository) ListUsers(ctx context.Context) ([]models.User, models.Notifier) {
+	if acErr := self.accessControlService.Enforce(ctx, "/user", "list"); acErr != nil {
+		return nil, acErr
+	}
+
 	data, err := self.userDao.ListUsers(ctx)
 	if err != nil {
 		panic(err)
@@ -34,7 +38,7 @@ func (self *UserRepository) ListUsers(ctx context.Context) []models.User {
 
 	i := 0
 	for _, user := range data {
-		if acErr := self.accessControlService.Enforce(ctx, "user:"+user.Id, "read"); acErr == nil && user.Id != "ROOT" {
+		if acErr := self.accessControlService.Enforce(ctx, "/user/"+user.Id, "read"); acErr == nil && user.Id != "ROOT" {
 			users[i] = models.User{
 				UserId: user.Id,
 				Name:   user.Name,
@@ -45,7 +49,7 @@ func (self *UserRepository) ListUsers(ctx context.Context) []models.User {
 		}
 	}
 
-	return users[:i]
+	return users[:i], nil
 }
 
 // var _ services.UserService = (*UserRepository)(nil)
