@@ -49,7 +49,6 @@ func (r *AuthRoutes) Routes() (string, http.Handler) {
 
 	router.Group(func(group chi.Router) {
 		group.Use(middleware.RedirectToHomeMiddleware)
-		group.Get("/", r.Index())
 		group.Get("/login", r.LoginPage())
 		group.Post("/login", r.ProcessLogin())
 
@@ -65,33 +64,12 @@ func (r *AuthRoutes) Routes() (string, http.Handler) {
 
 	router.Group(func(group chi.Router) {
 		group.Use(middleware.RedirectToLoginMiddleware)
-		group.Get("/userinfo", r.UserInfo())
-		group.Get("/home", r.Home())
+		group.Get("/", r.Home())
 		group.Get("/invite", r.Invite())
 		group.Post("/invite", r.ProcessInvite())
 	})
 
 	return "/auth", router
-}
-
-func (self *AuthRoutes) Index() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/auth/home", http.StatusFound)
-	}
-}
-
-func (self *AuthRoutes) UserInfo() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		user := r.Context().Value("user")
-
-		if r.Header.Get("Accept") == "application/json" {
-			utils.RenderJSON(w, user, http.StatusOK)
-		} else {
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.WriteHeader(http.StatusOK)
-			self.templateService.Render(w, "userinfo.html", "layout", models.NewTemplateData(user))
-		}
-	}
 }
 
 func (self *AuthRoutes) LoginPage() http.HandlerFunc {
@@ -122,7 +100,7 @@ func (self *AuthRoutes) ProcessLogin() http.HandlerFunc {
 
 			returnToCookie, err := r.Cookie(utils.RETURN_TO_COOKIE_NAME)
 			if err != nil {
-				http.Redirect(w, r, "/auth/home", http.StatusFound)
+				http.Redirect(w, r, "/auth", http.StatusFound)
 			} else {
 				http.Redirect(w, r, returnToCookie.Value, http.StatusFound)
 			}
@@ -147,9 +125,24 @@ func (self *AuthRoutes) Logout() http.HandlerFunc {
 	}
 }
 
+type HomeAction struct {
+	Name string
+	Url  string
+}
+
+type HomeData struct {
+	User    *models.SessionData
+	Actions []HomeAction
+}
+
 func (self *AuthRoutes) Home() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user := r.Context().Value("user").(*models.SessionData)
+
+		actions := make([]HomeAction, 0)
+		if err := self.accessControlService.Enforce(r.Context(), "/auth/invite", "read"); err == nil {
+			actions = append(actions, HomeAction{Name: "Invite User", Url: "/auth/invite"})
+		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
@@ -157,7 +150,7 @@ func (self *AuthRoutes) Home() http.HandlerFunc {
 			w,
 			"home.html",
 			"layout",
-			models.NewTemplate(user, utils.GetNotifications(r)),
+			models.NewTemplate(HomeData{user, actions}, utils.GetNotifications(r)),
 		)
 	}
 }
@@ -421,8 +414,19 @@ func (self *AuthRoutes) ProcessForgotPassword() http.HandlerFunc {
 
 func (self *AuthRoutes) Invite() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		user := r.Context().Value("user").(*models.SessionData)
+		accessControlErr := self.accessControlService.Enforce(r.Context(), r.URL.Path, "read")
+		if accessControlErr != nil {
+			utils.SetNotifications(
+				w,
+				accessControlErr,
+				"/auth",
+				self.notificationConfig.Timeout,
+			)
+			http.Redirect(w, r, "/auth", http.StatusFound)
+			return
+		}
 
+		user := r.Context().Value("user").(*models.SessionData)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		self.templateService.Render(
@@ -430,8 +434,8 @@ func (self *AuthRoutes) Invite() http.HandlerFunc {
 			"invite_user.html",
 			"layout",
 			models.NewTemplate(
-				map[string]interface{} { 
-					"CsrfToken": user.CsrfToken, 
+				map[string]interface{}{
+					"CsrfToken": user.CsrfToken,
 				},
 				utils.GetNotifications(r),
 			),
@@ -441,7 +445,11 @@ func (self *AuthRoutes) Invite() http.HandlerFunc {
 
 func (self *AuthRoutes) ProcessInvite() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		accessControlErr := self.accessControlService.Enforce(r.Context(), "invite", "send")
+		accessControlErr := self.accessControlService.Enforce(
+			r.Context(),
+			r.URL.Path,
+			"create",
+		)
 		if accessControlErr != nil {
 			utils.SetNotifications(
 				w,
@@ -465,7 +473,7 @@ func (self *AuthRoutes) ProcessInvite() http.HandlerFunc {
 				self.notificationConfig.Timeout,
 			)
 			http.Redirect(w, r, "/auth/invite", http.StatusFound)
-			return 
+			return
 		}
 
 		err := self.authService.InviteUser(r.Context(), session.UserId, email)
@@ -479,6 +487,6 @@ func (self *AuthRoutes) ProcessInvite() http.HandlerFunc {
 		session.CsrfToken = uuid.New().String()
 		self.sessionService.Update(r.Context(), session)
 
-		http.Redirect(w, r, "/auth/home", http.StatusFound)
+		http.Redirect(w, r, "/auth", http.StatusFound)
 	}
 }

@@ -8,7 +8,7 @@ create table if not exists role_permission (
 	role_id int not null,
 	resource text not null,
 	action text not null,
-	permission text not null,
+	effect text not null,
 
 	foreign key (role_id) references role(id)
 );
@@ -18,7 +18,7 @@ create table if not exists user_permission (
 	user_id varchar(36) not null,
 	resource text not null,
 	action text not null,
-	permission text not null,
+	effect text not null,
 
 	foreign key (user_id) references user(id)
 );

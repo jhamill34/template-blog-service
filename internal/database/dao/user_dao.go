@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/google/uuid"
 	"github.com/jhamill34/notion-provisioner/internal/database"
 )
 
@@ -95,13 +94,12 @@ func (dao *UserDao) FindByUsername(
 
 func (dao *UserDao) CreateUser(
 	ctx context.Context,
-	name, email, hashedPassword string,
+	id, name, email, hashedPassword string,
 	verified bool,
 ) (*database.UserEntity, error) {
 	db := dao.databaseProvider.Get()
 
 	if _, err := dao.FindByEmail(ctx, email); err == database.NotFound {
-		id := uuid.New().String()
 		_, err := db.ExecContext(ctx, `
 		INSERT INTO user 
 			(id, name, email, hashed_password, verified)
@@ -157,13 +155,16 @@ func (dao *UserDao) VerifyUser(ctx context.Context, id string) error {
 	return nil
 }
 
-func (dao *UserDao) GetPermissions(ctx context.Context, id string) ([]database.UserPermissionEntity, error) {
+func (dao *UserDao) GetPermissions(
+	ctx context.Context,
+	id string,
+) ([]database.UserPermissionEntity, error) {
 	db := dao.databaseProvider.Get()
 
 	var permissions []database.UserPermissionEntity
 	err := db.SelectContext(ctx, &permissions, `
 		SELECT 
-			id, user_id, resource, action, permission 
+			id, user_id, resource, action, effect
 		FROM 
 			user_permission 
 		WHERE 
@@ -194,4 +195,3 @@ func (dao *UserDao) ListUsers(ctx context.Context) ([]database.UserEntity, error
 
 	return users, nil
 }
-

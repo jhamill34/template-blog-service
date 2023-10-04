@@ -13,11 +13,11 @@ type UserEntity struct {
 }
 
 type UserPermissionEntity struct {
-	Id         int    `db:"id"`
-	UserId     string `db:"user_id"`
-	Resource   string `db:"resource"`
-	Action     string `db:"action"`
-	Permission string `db:"permission"`
+	Id       int    `db:"id"`
+	UserId   string `db:"user_id"`
+	Resource string `db:"resource"`
+	Action   string `db:"action"`
+	Effect   string `db:"effect"`
 }
 
 type RoleEntity struct {
@@ -26,11 +26,11 @@ type RoleEntity struct {
 }
 
 type RolePermissionEntity struct {
-	Id         int    `db:"id"`
-	RoleId     int    `db:"role_id"`
-	Resource   string `db:"resource"`
-	Action     string `db:"action"`
-	Permission string `db:"permission"`
+	Id       int    `db:"id"`
+	RoleId   int    `db:"role_id"`
+	Resource string `db:"resource"`
+	Action   string `db:"action"`
+	Effect   string `db:"effect"`
 }
 
 type RoleUserEntity struct {

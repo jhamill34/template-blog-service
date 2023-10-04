@@ -64,7 +64,7 @@ func RedirectToHomeMiddleware(next http.Handler) http.Handler {
 		user := r.Context().Value("user")
 
 		if user != nil {
-			http.Redirect(w, r, "/auth/home", http.StatusFound)
+			http.Redirect(w, r, "/auth", http.StatusFound)
 			return
 		}
 

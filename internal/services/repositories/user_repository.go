@@ -34,7 +34,7 @@ func (self *UserRepository) ListUsers(ctx context.Context) []models.User {
 
 	i := 0
 	for _, user := range data {
-		if acErr := self.accessControlService.Enforce(ctx, "user:"+user.Id, "read"); acErr == nil {
+		if acErr := self.accessControlService.Enforce(ctx, "user:"+user.Id, "read"); acErr == nil && user.Id != "ROOT" {
 			users[i] = models.User{
 				UserId: user.Id,
 				Name:   user.Name,

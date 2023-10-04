@@ -138,7 +138,8 @@ func (repo *AuthRepository) CreateUser(
 		panic(err)
 	}
 
-	user, err := repo.userDao.CreateUser(ctx, username, email, encodedHash, false)
+	id := uuid.New().String()
+	user, err := repo.userDao.CreateUser(ctx, id, username, email, encodedHash, false)
 	if err == database.Duplicate {
 		return services.EmailAlreadyInUse
 	}
@@ -206,7 +207,7 @@ func (repo *AuthRepository) CreateRootUser(
 		panic(err)
 	}
 
-	_, err = repo.userDao.CreateUser(ctx, ROOT_NAME, email, encodedHash, true)
+	_, err = repo.userDao.CreateUser(ctx, ROOT_NAME, ROOT_NAME, email, encodedHash, true)
 
 	if err == database.Duplicate {
 		return services.EmailAlreadyInUse

@@ -60,7 +60,7 @@ func (self *CasbinAccessControl) makeEnforcer(ctx context.Context, id string) *c
 
 	userPrinciple := fmt.Sprintf("u_%s", id)
 	for _, permission := range permissions {
-		e.AddPolicy(userPrinciple, permission.Resource, permission.Action, permission.Permission)
+		e.AddPolicy(userPrinciple, permission.Resource, permission.Action, permission.Effect)
 	}
 
 	return e

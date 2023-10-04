@@ -14,12 +14,16 @@ Home
 					<div class="w-4 h-4 bg-current rounded-full"></div>
 				</div>
 				<div class="flex-1">
+					{{ with .User }}
 					<div class="leading-6 font-bold">{{ .Email }}</div>
 					<div class="text-sm text-gray-500">{{ .Name }}</div>
+					{{ end }}
 				</div>
 				<div>
+					{{ range .Actions }}
+					<a href="{{ .Url }}" class="p-2 border-[1px] border-gray-400 rounded shadow font-semibold transition-colors hover:bg-gray-400/10">{{ .Name }}</a>
+					{{ end }}
 					<a href="/auth/password/change" class="p-2 border-[1px] border-gray-400 rounded shadow font-semibold transition-colors hover:bg-gray-400/10">Change Password</a>
-					<a href="/auth/invite" class="p-2 border-[1px] border-gray-400 rounded shadow font-semibold transition-colors hover:bg-gray-400/10">Invite</a>
 					<a href="/auth/logout" class="p-2 border-[1px] border-rose-400 rounded shadow font-semibold transition-colors bg-rose-200 hover:bg-rose-300">Logout</a>
 				</div>
 			</div>

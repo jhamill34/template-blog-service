@@ -6,6 +6,7 @@ import (
 	"github.com/jhamill34/notion-provisioner/internal/config"
 	"github.com/jhamill34/notion-provisioner/internal/database"
 	"github.com/jhamill34/notion-provisioner/internal/database/dao"
+	"github.com/jhamill34/notion-provisioner/internal/services"
 	"github.com/jhamill34/notion-provisioner/internal/services/email"
 	"github.com/jhamill34/notion-provisioner/internal/services/rbac"
 	"github.com/jhamill34/notion-provisioner/internal/services/repositories"
@@ -107,12 +108,8 @@ func ConfigureAuth() *Auth {
 			}
 
 			if cfg.DefaultUser != nil {
-				user, err := authRepo.GetUserByUsername(ctx, "ROOT")
-				if err != nil {
-					panic(err)
-				}
-
-				if user == nil {
+				_, err := authRepo.GetUserByUsername(ctx, "ROOT")
+				if err == services.AccountNotFound {
 					err = authRepo.CreateRootUser(
 						ctx,
 						cfg.DefaultUser.Email,
@@ -122,6 +119,11 @@ func ConfigureAuth() *Auth {
 						panic(err)
 					}
 				}
+				
+				if err != nil {
+					panic(err)
+				}
+
 			}
 
 		},
