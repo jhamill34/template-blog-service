@@ -45,6 +45,22 @@ var UserNotFound *UserServiceError = NewUserServiceError("User not found")
 
 //================================================== 
 
+type AppServiceError struct {
+	Message string
+}
+
+func (self *AppServiceError) Notify() *models.Notification {
+	return &models.Notification{Message: self.Message}
+}
+
+func NewAppServiceError(message string) *AppServiceError {
+	return &AppServiceError{Message: message}
+}
+
+var AppNotFound *AppServiceError = NewAppServiceError("User not found")
+
+//================================================== 
+
 type TokenError struct {
 	Message string
 }

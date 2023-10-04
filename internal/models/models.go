@@ -6,6 +6,14 @@ type User struct {
 	Email  string `json:"email"`
 }
 
+type App struct {
+	AppId         string `json:"app_id"`
+	ClientId      string `json:"client_id"`
+	RedirectUri   string `json:"redirect_uri"`
+	Name          string `json:"name"`
+	Description   string `json:"description"`
+}
+
 type Policy struct {
 	PolicyId int    `json:"policy_id"`
 	Resource string `json:"resource"`

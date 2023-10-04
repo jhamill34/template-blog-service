@@ -1,0 +1,58 @@
+{{ define "title" }}
+List Apps
+{{ end }}
+
+{{ define "content" }}
+<div class="flex justify-center">
+	<div class="flex-1 max-w-screen-md p-4">
+		<div class="flex gap-2 py-4">
+			<div class="px-4 sm:px-0 flex-1">
+				<h3 class="text-base font-semibold leading-7 text-gray-900">Applications</h3>
+				<p class="mt-1 max-w-2xl text-sm leading-6 text-gray-500">used for oauth flows.</p>
+			</div>
+			<div>
+				<a href="/oauth/application/new"
+					class="text-sm text-gray-900 font-semibold p-2 shadow ring-1 ring-inset ring-gray-300 rounded hover:bg-gray-100 transition-colors">Create</a>
+			</div>
+		</div>
+		<div class="rounded overflow-hidden shadow ring-1 ring-black ring-opacity-5">
+			<table class="divide-y divide-gray-300 w-full">
+				<thead class="bg-gray-50">
+					<tr>
+						<th class="text-left p-3 text-sm text-gray-900 font-semibold">APP NAME</th>
+						<th class="text-left p-3 text-sm text-gray-900 font-semibold">APP ID</th>
+						<th class="text-left p-3 text-sm text-gray-900 font-semibold">CLIENT ID</th>
+						<th class="text-left p-3 text-sm text-gray-900 font-semibold">
+							<span class="sr-only">VIEW</span>
+						</th>
+						<th class="text-left p-3 text-sm text-gray-900 font-semibold">
+							<span class="sr-only">DELETE</span>
+						</th>
+					</tr>
+				</thead>
+				<tbody class="divide-y divide-gray-200">
+					{{ $csrf := .CsrfToken }}
+					{{ range .Apps }}
+					<tr>
+						<td class="p-3 text-sm text-gray-500">{{ .Name }}</td>
+						<td class="p-3 text-sm text-gray-500">{{ .AppId }}</td>
+						<td class="p-3 text-sm text-gray-500">{{ .ClientId }}</td>
+						<td class="p-3 text-sm text-gray-500">
+							<a href="/oauth/application/{{ .AppId }}" class="text-indigo-400 font-semibold">view</a>
+						</td>
+						<td class="p-3 text-sm text-gray-500">
+							<button 
+								hx-delete="/oauth/application/{{ .AppId }}?csrf_token={{ $csrf }}" 
+								hx-confirm="Are you sure you want to delete this application?"
+								hx-swap="delete"
+								hx-target="closest tr"
+								class="text-rose-400 font-semibold">delete</button>
+						</td>
+					</tr>
+					{{ end }}
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>
+{{ end }}

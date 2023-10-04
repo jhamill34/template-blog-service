@@ -72,10 +72,13 @@ func ConfigureAuth() *Auth {
 		inviteService,
 	)
 
+	appDao := dao.NewApplicationDao(db)
+
 	permissionModel := config.LoadRbacModel("configs/rbac_model.conf")
 	accessControlService := rbac.NewCasbinAccessControl(permissionModel, userDao)
 
 	userService := repositories.NewUserRepository(userDao, accessControlService)
+	appService := repositories.NewApplicationRepository(appDao, accessControlService, cfg.PasswordConfig)
 
 	return &Auth{
 		server: transport.NewServer(
@@ -89,8 +92,10 @@ func ConfigureAuth() *Auth {
 				accessControlService,
 			),
 			routes.NewOauthRoutes(
+				appService,
 				sessionStore,
 				templateRepository,
+				cfg.General.Notifications,
 			),
 			routes.NewUserRoutes(
 				cfg.General.Notifications,

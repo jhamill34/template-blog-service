@@ -8,9 +8,17 @@ import (
 )
 
 type AuthService interface {
-	LoginUser(ctx context.Context, email string, password string) (*models.SessionData, models.Notifier)
+	LoginUser(
+		ctx context.Context,
+		email string,
+		password string,
+	) (*models.SessionData, models.Notifier)
 	CreateUser(ctx context.Context, username, email, password string) models.Notifier
-	VerifyInvite(ctx context.Context, id, token string, predicate func(*models.InviteData) bool) models.Notifier
+	VerifyInvite(
+		ctx context.Context,
+		id, token string,
+		predicate func(*models.InviteData) bool,
+	) models.Notifier
 	InviteUser(ctx context.Context, fromUserId, email string) models.Notifier
 	InvalidateInvite(ctx context.Context, id string) models.Notifier
 	ResendVerifyEmail(ctx context.Context, email string) models.Notifier
@@ -32,6 +40,17 @@ type UserService interface {
 	DeletePolicy(ctx context.Context, id, policyId string) models.Notifier
 }
 
+type ApplicationService interface {
+	CreateApp(
+		ctx context.Context,
+		redirectUri, name, description string,
+	) (*models.App, string, models.Notifier)
+	GetApp(ctx context.Context, id string) (*models.App, models.Notifier)
+	GetAppByClientId(ctx context.Context, clientId string) (*models.App, models.Notifier)
+	DeleteApp(ctx context.Context, id string) models.Notifier
+	ListApps(ctx context.Context) ([]models.App, models.Notifier)
+}
+
 type VerifyTokenService interface {
 	Verify(ctx context.Context, id string, token string) models.Notifier
 	Create(ctx context.Context, id string) string
@@ -40,14 +59,14 @@ type VerifyTokenService interface {
 type TokenClaimsService interface {
 	VerifyWithClaims(ctx context.Context, id string, token string, data interface{}) models.Notifier
 	CreateWithClaims(ctx context.Context, id string, data interface{}) string
-	Destroy(ctx context.Context, id string) 
-} 
+	Destroy(ctx context.Context, id string)
+}
 
 type SessionService interface {
 	Create(ctx context.Context, data *models.SessionData) string
 	Find(ctx context.Context, id string, data *models.SessionData) models.Notifier
 	Update(ctx context.Context, data *models.SessionData) models.Notifier
-	Destroy(ctx context.Context, id string) 
+	Destroy(ctx context.Context, id string)
 }
 
 type TemplateService interface {
@@ -55,11 +74,10 @@ type TemplateService interface {
 }
 
 type EmailService interface {
-	SendEmail(ctx context.Context, to, subject, body string) 
+	SendEmail(ctx context.Context, to, subject, body string)
 }
 
 type AccessControlService interface {
 	Enforce(ctx context.Context, resource string, action string) models.Notifier
 	Invalidate(ctx context.Context, id string)
 }
-

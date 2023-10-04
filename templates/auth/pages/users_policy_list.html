@@ -39,6 +39,7 @@ User Policies
 						<td class="p-3 text-sm text-gray-500">
 							<button 
 								hx-delete="/user/{{ $userId }}/policy/{{ .PolicyId }}?csrf_token={{ $csrfToken }}" 
+								hx-confirm="Are you sure you want to delete this policy?"
 								hx-swap="delete"
 								hx-target="closest tr"
 								class="text-rose-400 font-semibold">delete</button>

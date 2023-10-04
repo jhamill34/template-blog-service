@@ -38,3 +38,14 @@ type RoleUserEntity struct {
 	RoleId int    `db:"role_id"`
 	UserId string `db:"user_id"`
 }
+
+type ApplicationEntity struct {
+	Id                 string    `db:"id"`
+	ClientId           string    `db:"client_id"`
+	HashedClientSecret string    `db:"hashed_client_secret"`
+	RedirectUri        string    `db:"redirect_uri"`
+	Name               string    `db:"name"`
+	Description        string    `db:"description"`
+	CreatedAt          time.Time `db:"created_at"`
+	UpdatedAt          time.Time `db:"updated_at"`
+}
