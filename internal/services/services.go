@@ -26,6 +26,10 @@ type AuthService interface {
 
 type UserService interface {
 	ListUsers(ctx context.Context) ([]models.User, models.Notifier)
+	GetUser(ctx context.Context, id string) (*models.User, models.Notifier)
+	ListPolicies(ctx context.Context, id string) ([]models.Policy, models.Notifier)
+	CreatePolicy(ctx context.Context, id, resource, action, effect string) models.Notifier
+	DeletePolicy(ctx context.Context, id, policyId string) models.Notifier
 }
 
 type VerifyTokenService interface {
@@ -56,5 +60,6 @@ type EmailService interface {
 
 type AccessControlService interface {
 	Enforce(ctx context.Context, resource string, action string) models.Notifier
+	Invalidate(ctx context.Context, id string)
 }
 

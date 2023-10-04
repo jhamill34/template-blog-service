@@ -178,6 +178,45 @@ func (dao *UserDao) GetPermissions(
 	return permissions, nil
 }
 
+func (dao *UserDao) CreatePermission(
+	ctx context.Context,
+	id, resource, action, effect string,
+) error {
+	db := dao.databaseProvider.Get()
+
+	_, err := db.ExecContext(ctx, `
+		INSERT INTO user_permission
+			(user_id, resource, action, effect)
+		VALUES 
+			(?, ?, ?, ?)
+	`, id, resource, action, effect)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (dao *UserDao) DeletePermission(
+	ctx context.Context,
+	id, permissionId string,
+) error {
+	db := dao.databaseProvider.Get()
+
+	_, err := db.ExecContext(ctx, `
+		DELETE FROM user_permission
+		WHERE user_id = ? AND id = ?
+	`, id, permissionId)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+
 func (dao *UserDao) ListUsers(ctx context.Context) ([]database.UserEntity, error) {
 	db := dao.databaseProvider.Get()
 

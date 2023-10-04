@@ -29,6 +29,22 @@ var AccountNotFound *AuthServiceError = NewAuthServiceError("Account not found")
 
 //================================================== 
 
+type UserServiceError struct {
+	Message string
+}
+
+func (self *UserServiceError) Notify() *models.Notification {
+	return &models.Notification{Message: self.Message}
+}
+
+func NewUserServiceError(message string) *UserServiceError {
+	return &UserServiceError{Message: message}
+}
+
+var UserNotFound *UserServiceError = NewUserServiceError("User not found")
+
+//================================================== 
+
 type TokenError struct {
 	Message string
 }

@@ -94,4 +94,8 @@ func (self *CasbinAccessControl) Enforce(
 	return nil
 }
 
+func (self *CasbinAccessControl) Invalidate(ctx context.Context, id string) {
+	delete(self.enforcers, id)
+}
+
 // var _ services.AccessControlService = (*CasbinAccessControl)(nil)
