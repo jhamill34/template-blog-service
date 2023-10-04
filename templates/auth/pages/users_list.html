@@ -3,22 +3,34 @@ List Users
 {{ end }}
 
 {{ define "content" }}
-<div>
-	<table>
-		<thead>
-			<tr>
-				<th>Email</th>
-				<th>UserId</th>
-			</tr>
-		</thead>
-		<tbody>
-			{{ range . }}
-			<tr>
-				<td>{{ .Email }}</td>
-				<td>{{ .UserId }}</td>
-			</tr>
-			{{ end }}
-		</tbody>
-	</table>
+<div class="flex">
+	<div class="m-auto p-4">
+		<div class="rounded overflow-hidden shadow ring-1 ring-black ring-opacity-5">
+			<table class="divide-y divide-gray-300">
+				<thead class="bg-gray-50">
+					<tr>
+						<th class="text-left p-3 text-sm text-gray-900 font-semibold">USERNAME</th>
+						<th class="text-left p-3 text-sm text-gray-900 font-semibold">EMAIL</th>
+						<th class="text-left p-3 text-sm text-gray-900 font-semibold">USER ID</th>
+						<th class="text-left p-3 text-sm text-gray-900 font-semibold">
+							<span class="sr-only">EDIT</span>
+						</th>
+					</tr>
+				</thead>
+				<tbody class="divide-y divide-gray-200">
+					{{ range . }}
+					<tr>
+						<td class="p-3 text-sm text-gray-500">{{ .Name }}</td>
+						<td class="p-3 text-sm text-gray-500">{{ .Email }}</td>
+						<td class="p-3 text-sm text-gray-500">{{ .UserId }}</td>
+						<td class="p-3 text-sm text-gray-500">
+							<a href="/user/{{ .UserId }}" class="text-indigo-400 font-semibold">View</a>
+						</td>
+					</tr>
+					{{ end }}
+				</tbody>
+			</table>
+		</div>
+	</div>
 </div>
 {{ end }}

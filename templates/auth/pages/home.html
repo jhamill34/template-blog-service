@@ -7,24 +7,24 @@ Home
 {{ define "content" }}
 
 <div class="max-w-screen-lg m-auto p-8">
-	<div class="shadow rounded p-4 border-[1px] border-gray-400">
+	<div class="shadow rounded p-4 ring-1 ring-gray-300">
 		<header>
 			<div class="flex">
-				<div class="p-2 bg-gray-500/40 text-gray-500 rounded-full my-2 mr-4">
+				<div class="p-2 bg-indigo-500/40 text-indigo-500 rounded-full my-2 mr-4">
 					<div class="w-4 h-4 bg-current rounded-full"></div>
 				</div>
 				<div class="flex-1">
 					{{ with .User }}
-					<div class="leading-6 font-bold">{{ .Email }}</div>
+					<div class="leading-6 font-bold text-gray-800">{{ .Email }}</div>
 					<div class="text-sm text-gray-500">{{ .Name }}</div>
 					{{ end }}
 				</div>
 				<div>
 					{{ range .Actions }}
-					<a href="{{ .Url }}" class="p-2 border-[1px] border-gray-400 rounded shadow font-semibold transition-colors hover:bg-gray-400/10">{{ .Name }}</a>
+					<a href="{{ .Url }}" class="rounded ring-1 ring-inset ring-gray-300 text-sm text-gray-900 p-2 shadow font-semibold transition-colors hover:bg-gray-400/10">{{ .Name }}</a>
 					{{ end }}
-					<a href="/auth/password/change" class="p-2 border-[1px] border-gray-400 rounded shadow font-semibold transition-colors hover:bg-gray-400/10">Change Password</a>
-					<a href="/auth/logout" class="p-2 border-[1px] border-rose-400 rounded shadow font-semibold transition-colors bg-rose-200 hover:bg-rose-300">Logout</a>
+					<a href="/auth/password/change" class="rounded ring-1 ring-inset ring-gray-300 text-sm text-gray-900 p-2 shadow font-semibold transition-colors hover:bg-gray-400/10">Change Password</a>
+					<a href="/auth/logout" class="ring-1 ring-inset ring-rose-300 p-2 text-sm rounded shadow text-rose-600 font-semibold transition-colors bg-rose-50 hover:bg-rose-100">Logout</a>
 				</div>
 			</div>
 		</header>
