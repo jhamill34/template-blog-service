@@ -124,20 +124,65 @@ func (self *OauthRoutes) ProcessCreateApplication() http.HandlerFunc {
 
 func (self *OauthRoutes) GetApplication() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		id := chi.URLParam(r, "id")
+		app, err := self.appService.GetApp(r.Context(), id)
+		if err != nil {
+			utils.SetNotifications(
+				w,
+				err,
+				"/oauth/application",
+				self.notificationConfig.Timeout,
+			)
+			http.Redirect(w, r, "/oauth/application", http.StatusFound)
+			return 
+		}
+
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		self.templateService.Render(
 			w,
 			"application_detail.html",
 			"layout",
-			models.NewTemplateEmpty(),
+			models.NewTemplate(app, utils.GetNotifications(r)),
 		)
 	}
 }
 
 func (self *OauthRoutes) DeleteApplication() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
+		session := r.Context().Value("user").(*models.SessionData)
+		id := chi.URLParam(r, "id")
+		csrfToken := r.URL.Query().Get("csrf_token")
+
+		if csrfToken != session.CsrfToken {
+			utils.SetNotifications(
+				w,
+				utils.NewGenericMessage("bad request, please try again."),
+				"/oauth/application",
+				self.notificationConfig.Timeout,
+			)
+			w.Header().Set("HX-Redirect", "/oauth/application")
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		if err := self.appService.DeleteApp(r.Context(), id); err != nil {
+			utils.SetNotifications(
+				w,
+				err,
+				"/oauth/application",
+				self.notificationConfig.Timeout,
+			)
+			w.Header().Set("HX-Redirect", "/oauth/application")
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		session.CsrfToken = uuid.New().String()
+		self.sessionService.Update(r.Context(), session)
+
+		w.Header().Set("HX-Redirect", "/oauth/application")
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 
@@ -168,7 +213,10 @@ func (self *OauthRoutes) ListApplications() http.HandlerFunc {
 			w,
 			"application_list.html",
 			"layout",
-			models.NewTemplate(ApplicationListData{session.CsrfToken, apps}, utils.GetNotifications(r)),
+			models.NewTemplate(
+				ApplicationListData{session.CsrfToken, apps},
+				utils.GetNotifications(r),
+			),
 		)
 	}
 }
