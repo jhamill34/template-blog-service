@@ -21,6 +21,7 @@ type ApplicationRepository struct {
 	passwordConfig       *config.HashParams
 	tokenClaimService    services.TokenClaimsService
 	signer               services.Signer
+	accessTokenConfig    config.AccessTokenConfiguration
 }
 
 func NewApplicationRepository(
@@ -29,6 +30,7 @@ func NewApplicationRepository(
 	passwordConfig *config.HashParams,
 	tokenClaimService services.TokenClaimsService,
 	signer services.Signer,
+	accessTokenConfig config.AccessTokenConfiguration,
 ) *ApplicationRepository {
 	return &ApplicationRepository{
 		appDao:               appDao,
@@ -36,6 +38,7 @@ func NewApplicationRepository(
 		passwordConfig:       passwordConfig,
 		tokenClaimService:    tokenClaimService,
 		signer:               signer,
+		accessTokenConfig:    accessTokenConfig,
 	}
 }
 
@@ -292,7 +295,7 @@ func (self *ApplicationRepository) NewAccessToken(
 		Sub: userId,
 		Aud: clientId,
 		Iss: "auth_server",
-		Exp: 3600,
+		Exp: int64(self.accessTokenConfig.TTL.Seconds()),
 		Iat: time.Now().Unix(),
 	}
 	claimsBytes, err := json.Marshal(claims)
@@ -300,15 +303,14 @@ func (self *ApplicationRepository) NewAccessToken(
 		panic(err)
 	}
 	claimsString := base64.RawURLEncoding.EncodeToString(claimsBytes)
-	
+
 	paylaod := headerString + "." + claimsString
 	signature, err := self.signer.Sign([]byte(paylaod))
-
 
 	return &models.AccessTokenResponse{
 		AccessToken:  paylaod + "." + signature,
 		RefreshToken: "",
-		Expires:      3600,
+		Expires: int64(self.accessTokenConfig.TTL.Seconds()),
 	}, nil
 }
 

@@ -2,62 +2,38 @@ package main
 
 import (
 	"crypto/rand"
-	"encoding/base64"
-	"fmt"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"os"
-	"strings"
-
-	"github.com/google/uuid"
-	"golang.org/x/crypto/argon2"
-)
-
-const (
-	iterations  = 3
-	memory      = 32 * 1024
-	parallelism = 4
-	length      = 32
 )
 
 func main() {
-	fmt.Printf("ID: %s\n", uuid.New().String())
-
-	password := os.Args[1]
-	password = strings.TrimSpace(password)
-
-	salt, err  := randomBytes(16)
+	privateFile, err := os.OpenFile("private.pem", os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		panic(err)
 	}
+	defer privateFile.Close()
 
-	hash := argon2.IDKey(
-		[]byte(password),
-		salt, 
-		iterations,
-		memory,
-		parallelism,
-		length,
-	)
-	base64hash := base64.RawStdEncoding.EncodeToString(hash)
-	base64salt := base64.RawStdEncoding.EncodeToString(salt)
-
-	encodedPassword := fmt.Sprintf(
-		"$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s",
-		argon2.Version,
-		memory,
-		iterations,
-		parallelism,
-		base64salt,
-		base64hash,
-	)
-
-	fmt.Println(encodedPassword)
-}
-
-func randomBytes(length int) ([]byte, error) {
-	bytes := make([]byte, length)
-	if _, err := rand.Read(bytes); err != nil {
-		return nil, err
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		panic(err)
 	}
+	pem.Encode(privateFile, &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
+	})
 
-	return bytes, nil
+	publicFile, err := os.OpenFile("public.pem", os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		panic(err)
+	}
+	defer publicFile.Close()
+
+	publicKey := privateKey.PublicKey
+	pem.Encode(publicFile, &pem.Block{
+		Type:  "RSA PUBLIC KEY",
+		Bytes: x509.MarshalPKCS1PublicKey(&publicKey),
+	})
 }
+

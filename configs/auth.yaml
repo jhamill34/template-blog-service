@@ -17,6 +17,11 @@ password_forgot_ttl: 300s
 invite_ttl: 86400s
 auth_code_ttl: 60s
 
+access_token:
+  public_key_path: ./keys/public.pem
+  private_key_path: ./keys/private.pem
+  ttl: 3600s
+
 session:
   ttl: 3600s 
   cookie_ttl: 86400s 

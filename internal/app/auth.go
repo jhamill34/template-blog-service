@@ -2,8 +2,11 @@ package app
 
 import (
 	"context"
-	"crypto/rand"
 	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
+	"io"
+	"os"
 
 	"github.com/jhamill34/notion-provisioner/internal/config"
 	"github.com/jhamill34/notion-provisioner/internal/database"
@@ -25,23 +28,15 @@ type Auth struct {
 	cleanup func(ctx context.Context)
 }
 
-func GenerateKey() *rsa.PrivateKey {
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		panic(err)
-	}
-
-	return privateKey
-}
-
 func ConfigureAuth() *Auth {
 	cfg, err := config.LoadAuthConfig("configs/auth.yaml")
 	if err != nil {
 		panic(err)
 	}
 
-	privateKey := GenerateKey()
-	signer := rca_signer.NewRcaSigner(privateKey)
+	privateKey := loadPrivateKey(cfg.AccessToken.PrivateKeyPath)
+	publicKey := loadPublicKey(cfg.AccessToken.PublicKeyPath)
+	signer := rca_signer.NewRcaSigner(publicKey, privateKey)
 
 	db := database.NewMySQLDbProvider(cfg.General.Database.Path)
 
@@ -109,6 +104,7 @@ func ConfigureAuth() *Auth {
 		cfg.PasswordConfig,
 		authCodeService,
 		signer,
+		cfg.AccessToken,
 	)
 
 	return &Auth{
@@ -175,4 +171,46 @@ func (a *Auth) Start(ctx context.Context) {
 	defer a.cleanup(ctx)
 
 	a.server.Start(ctx)
+}
+
+func loadPublicKey(path string) *rsa.PublicKey {
+	publicFile, err := os.Open(path)
+	if err != nil {
+		panic(err)
+	}
+	defer publicFile.Close()
+
+	publicKeyBytes, err := io.ReadAll(publicFile)
+	if err != nil {
+		panic(err)
+	}
+
+	block, _ := pem.Decode(publicKeyBytes)
+	publicKey, err := x509.ParsePKCS1PublicKey(block.Bytes)
+	if err != nil {
+		panic(err)
+	}
+
+	return publicKey
+}
+
+func loadPrivateKey(path string) *rsa.PrivateKey {
+	privateFile, err := os.Open(path)
+	if err != nil {
+		panic(err)
+	}
+	defer privateFile.Close()
+
+	privateKeyBytes, err := io.ReadAll(privateFile)
+	if err != nil {
+		panic(err)
+	}
+
+	block, _ := pem.Decode(privateKeyBytes)
+	privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	if err != nil {
+		panic(err)
+	}
+
+	return privateKey
 }
