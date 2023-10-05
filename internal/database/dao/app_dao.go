@@ -100,6 +100,22 @@ func (self *ApplicationDao) FindByClientId(
 	return &app, nil
 }
 
+func (self *ApplicationDao) UpdateSecret(ctx context.Context, appId, hashedSecret string) error {
+	db := self.databaseProvider.Get()
+
+	_, err := db.ExecContext(ctx, `
+		UPDATE application
+		SET hashed_client_secret = ?
+		WHERE id = ?
+	`, hashedSecret, appId)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (self *ApplicationDao) Delete(ctx context.Context, appId string) error {
 	db := self.databaseProvider.Get()
 

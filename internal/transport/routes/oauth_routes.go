@@ -44,6 +44,7 @@ func (r *OauthRoutes) Routes() (string, http.Handler) {
 	router.Post("/application", r.ProcessCreateApplication())
 	router.Get("/application/{id}", r.GetApplication())
 	router.Delete("/application/{id}", r.DeleteApplication())
+	router.Put("/application/{id}/secret", r.NewSecret())
 	router.Get("/application", r.ListApplications())
 
 	// The actual Oauth Flow
@@ -122,8 +123,14 @@ func (self *OauthRoutes) ProcessCreateApplication() http.HandlerFunc {
 	}
 }
 
+type GetAppData struct {
+	CsrfToken string
+	App *models.App
+}
+
 func (self *OauthRoutes) GetApplication() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		session := r.Context().Value("user").(*models.SessionData)
 		id := chi.URLParam(r, "id")
 		app, err := self.appService.GetApp(r.Context(), id)
 		if err != nil {
@@ -143,7 +150,7 @@ func (self *OauthRoutes) GetApplication() http.HandlerFunc {
 			w,
 			"application_detail.html",
 			"layout",
-			models.NewTemplate(app, utils.GetNotifications(r)),
+			models.NewTemplate(GetAppData { session.CsrfToken, app }, utils.GetNotifications(r)),
 		)
 	}
 }
@@ -217,6 +224,48 @@ func (self *OauthRoutes) ListApplications() http.HandlerFunc {
 				ApplicationListData{session.CsrfToken, apps},
 				utils.GetNotifications(r),
 			),
+		)
+	}
+}
+
+func (self *OauthRoutes) NewSecret() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		session := r.Context().Value("user").(*models.SessionData)
+		id := chi.URLParam(r, "id")
+		csrfToken := r.URL.Query().Get("csrf_token")
+
+		if csrfToken != session.CsrfToken {
+			utils.SetNotifications(
+				w,
+				utils.NewGenericMessage("bad request, please try again."),
+				"/oauth/application/"+id,
+				self.notificationConfig.Timeout,
+			)
+			w.Header().Set("HX-Redirect", "/oauth/application")
+			w.WriteHeader(http.StatusNoContent)
+			return 
+		}
+
+		clientSecret, err := self.appService.NewSecret(r.Context(), id)
+		if err != nil {
+			utils.SetNotifications(
+				w,
+				err,
+				"/oauth/application/"+id,
+				self.notificationConfig.Timeout,
+			)
+			w.Header().Set("HX-Redirect", "/oauth/application")
+			w.WriteHeader(http.StatusNoContent)
+			return 
+		}
+
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		self.templateService.Render(
+			w,
+			"application_secret.html",
+			"layout",
+			models.NewTemplateData(clientSecret),
 		)
 	}
 }

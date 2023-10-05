@@ -17,6 +17,7 @@ type ApplicationRepository struct {
 	passwordConfig       *config.HashParams
 }
 
+
 func NewApplicationRepository(
 	appDao *dao.ApplicationDao,
 	accessControlService services.AccessControlService,
@@ -142,7 +143,7 @@ func (self *ApplicationRepository) ListApps(ctx context.Context) ([]models.App, 
 		panic(err)
 	}
 
-	apps := make([]models.App, len(data))	
+	apps := make([]models.App, len(data))
 	i := 0
 	for _, app := range data {
 		if err := self.accessControlService.Enforce(ctx, "/oauth/application/"+app.Id, "read"); err == nil {
@@ -159,6 +160,25 @@ func (self *ApplicationRepository) ListApps(ctx context.Context) ([]models.App, 
 	}
 
 	return apps[:i], nil
+}
+
+// NewSecret implements services.ApplicationService.
+func (self *ApplicationRepository) NewSecret(ctx context.Context, id string) (string, models.Notifier) {
+	if err := self.accessControlService.Enforce(ctx, "/oauth/application/"+id+"/secret", "update"); err != nil {
+		return "", err
+	}
+
+	clientSecret := uuid.New().String()
+	hashedClientSecret, err := createHash(self.passwordConfig, clientSecret)
+	if err != nil {
+		panic(err)
+	}
+
+	if err := self.appDao.UpdateSecret(ctx, id, hashedClientSecret); err != nil {
+		panic(err)
+	}
+
+	return clientSecret, nil
 }
 
 // var _ services.ApplicationService = (*ApplicationRepository)(nil)

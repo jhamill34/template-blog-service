@@ -3,6 +3,7 @@ App details
 {{ end }}
 
 {{ define "content" }}
+{{ $csrf := .CsrfToken }}
 <div class="flex justify-center">
 	<div class="max-w-screen-md flex-1 p-4">
 		<div class="shadow ring-1 ring-black ring-opacity-5 rounded p-6">
@@ -15,6 +16,7 @@ App details
 
 			<div class="mt-6 border-t border-gray-100">
 				<dl class="divide-y divide-gray-100">
+					{{ with .App }}
 					<div class="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
 						<dt class="text-sm font-medium leading-6 text-gray-900">Name</dt>
 						<dd class="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">{{ .Name }}</dd>
@@ -28,9 +30,26 @@ App details
 						<dd class="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">{{ .AppId }}</dd>
 					</div>
 					<div class="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+						<dt class="text-sm font-medium leading-6 text-gray-900">Client ID</dt>
+						<dd class="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">{{ .ClientId }}</dd>
+					</div>
+					<div class="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+						<dt class="text-sm font-medium leading-6 text-gray-900">Client Secret</dt>
+						<dd class="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
+							<button 
+								hx-put="/oauth/application/{{ .AppId }}/secret?csrf_token={{ $csrf }}"
+								hx-swap="outerHTML"
+								hx-target="this"
+								class="rounded ring-1 ring-inset ring-gray-300 text-sm text-gray-900 p-2 shadow font-semibold transition-colors hover:bg-gray-400/10">
+								Generate New
+							</button>
+						</dd>
+					</div>
+					<div class="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
 						<dt class="text-sm font-medium leading-6 text-gray-900">Redirect URI</dt>
 						<dd class="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">{{ .RedirectUri }}</dd>
 					</div>
+					{{ end }}
 				</dl>
 			</div>
 		</div>

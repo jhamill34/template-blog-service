@@ -49,6 +49,7 @@ type ApplicationService interface {
 	GetAppByClientId(ctx context.Context, clientId string) (*models.App, models.Notifier)
 	DeleteApp(ctx context.Context, id string) models.Notifier
 	ListApps(ctx context.Context) ([]models.App, models.Notifier)
+	NewSecret(ctx context.Context, id string) (string, models.Notifier)
 }
 
 type VerifyTokenService interface {
