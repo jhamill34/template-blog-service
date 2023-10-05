@@ -58,6 +58,7 @@ func NewAppServiceError(message string) *AppServiceError {
 }
 
 var AppNotFound *AppServiceError = NewAppServiceError("User not found")
+var InvalidAuthCode *AppServiceError = NewAppServiceError("Invalid auth code")
 
 //================================================== 
 

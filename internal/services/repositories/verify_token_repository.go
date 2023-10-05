@@ -23,6 +23,7 @@ const (
 	VerificationTypeRegistration   VerificationType = "registration:"
 	VerificationTypeForgotPassword VerificationType = "forgot_password:"
 	VerificationTypeInvite         VerificationType = "invite:"
+	VerificationTypeAuthCode       VerificationType = "auth_code:"
 )
 
 type HashedVerifyTokenRepository struct {
@@ -99,7 +100,11 @@ func (self *HashedVerifyTokenRepository) CreateWithClaims(
 	id string,
 	data interface{},
 ) string {
-	publicToken := uuid.New().String()
+	publicTokenBytes, err := randomBytes(32)
+	if err != nil {
+		panic(err)
+	}
+	publicToken := base64.RawURLEncoding.EncodeToString(publicTokenBytes)
 
 	token, err := createHash(self.passwordParams, publicToken)
 	encodedToken := base64.RawURLEncoding.EncodeToString([]byte(token))

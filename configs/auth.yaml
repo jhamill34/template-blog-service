@@ -15,6 +15,7 @@ password_config:
 verify_ttl: 300s
 password_forgot_ttl: 300s
 invite_ttl: 86400s
+auth_code_ttl: 60s
 
 session:
   ttl: 3600s 

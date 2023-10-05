@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/jhamill34/notion-provisioner/internal/models"
 	"github.com/jhamill34/notion-provisioner/internal/services"
@@ -50,7 +51,7 @@ func RedirectToLoginMiddleware(next http.Handler) http.Handler {
 		user := r.Context().Value("user")
 
 		if user == nil {
-			http.SetCookie(w, utils.ReturnToPostLoginCookie(r.URL.Path, 5))
+			http.SetCookie(w, utils.ReturnToPostLoginCookie(r.URL.String(), 5 * time.Minute))
 			http.Redirect(w, r, "/auth/login", http.StatusFound)
 			return
 		}

@@ -29,6 +29,7 @@ type AuthConfig struct {
 	VerifyTTL         time.Duration `yaml:"verify_ttl"`
 	PasswordForgotTTL time.Duration `yaml:"password_forgot_ttl"`
 	InviteTTL         time.Duration `yaml:"invite_ttl"`
+	AuthCodeTTL       time.Duration `yaml:"auth_code_ttl"`
 }
 
 type SessionConfig struct {

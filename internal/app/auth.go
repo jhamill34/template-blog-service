@@ -2,6 +2,8 @@ package app
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
 
 	"github.com/jhamill34/notion-provisioner/internal/config"
 	"github.com/jhamill34/notion-provisioner/internal/database"
@@ -9,6 +11,7 @@ import (
 	"github.com/jhamill34/notion-provisioner/internal/services"
 	"github.com/jhamill34/notion-provisioner/internal/services/email"
 	"github.com/jhamill34/notion-provisioner/internal/services/rbac"
+	"github.com/jhamill34/notion-provisioner/internal/services/rca_signer"
 	"github.com/jhamill34/notion-provisioner/internal/services/repositories"
 	"github.com/jhamill34/notion-provisioner/internal/services/session"
 	"github.com/jhamill34/notion-provisioner/internal/transport"
@@ -22,11 +25,23 @@ type Auth struct {
 	cleanup func(ctx context.Context)
 }
 
+func GenerateKey() *rsa.PrivateKey {
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		panic(err)
+	}
+
+	return privateKey
+}
+
 func ConfigureAuth() *Auth {
 	cfg, err := config.LoadAuthConfig("configs/auth.yaml")
 	if err != nil {
 		panic(err)
 	}
+
+	privateKey := GenerateKey()
+	signer := rca_signer.NewRcaSigner(privateKey)
 
 	db := database.NewMySQLDbProvider(cfg.General.Database.Path)
 
@@ -39,7 +54,11 @@ func ConfigureAuth() *Auth {
 		Password: cfg.General.Redis.Password,
 	})
 
-	sessionStore := session.NewRedisSessionStore(redisClient, cfg.Session.TTL, cfg.Session.SigningKey)
+	sessionStore := session.NewRedisSessionStore(
+		redisClient,
+		cfg.Session.TTL,
+		cfg.Session.SigningKey,
+	)
 	verifyTokenRepository := repositories.NewHashedVerifyTokenRepository(
 		redisClient,
 		cfg.VerifyTTL,
@@ -56,6 +75,12 @@ func ConfigureAuth() *Auth {
 		redisClient,
 		cfg.InviteTTL,
 		repositories.VerificationTypeInvite,
+		cfg.PasswordConfig,
+	)
+	authCodeService := repositories.NewHashedVerifyTokenRepository(
+		redisClient,
+		cfg.AuthCodeTTL,
+		repositories.VerificationTypeAuthCode,
 		cfg.PasswordConfig,
 	)
 
@@ -78,7 +103,13 @@ func ConfigureAuth() *Auth {
 	accessControlService := rbac.NewCasbinAccessControl(permissionModel, userDao)
 
 	userService := repositories.NewUserRepository(userDao, accessControlService)
-	appService := repositories.NewApplicationRepository(appDao, accessControlService, cfg.PasswordConfig)
+	appService := repositories.NewApplicationRepository(
+		appDao,
+		accessControlService,
+		cfg.PasswordConfig,
+		authCodeService,
+		signer,
+	)
 
 	return &Auth{
 		server: transport.NewServer(
@@ -103,6 +134,9 @@ func ConfigureAuth() *Auth {
 				templateRepository,
 				userService,
 			),
+			routes.NewKeyRoutes(
+				&privateKey.PublicKey,
+			),
 		),
 		cleanup: func(_ context.Context) {
 			db.Close()
@@ -125,7 +159,7 @@ func ConfigureAuth() *Auth {
 						panic(err)
 					}
 				}
-				
+
 				if err != nil {
 					panic(err)
 				}

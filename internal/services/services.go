@@ -50,6 +50,11 @@ type ApplicationService interface {
 	DeleteApp(ctx context.Context, id string) models.Notifier
 	ListApps(ctx context.Context) ([]models.App, models.Notifier)
 	NewSecret(ctx context.Context, id string) (string, models.Notifier)
+	NewAuthCode(ctx context.Context, userId, clientId string) string
+	GetAuthCode(ctx context.Context, code string) (string, string, models.Notifier)
+	ValidateAppSecret(ctx context.Context, id, secret string) (*models.App, models.Notifier)
+	NewAccessToken(ctx context.Context, userId, clientId string) (*models.AccessTokenResponse, models.Notifier)
+	VerifyAccessToken(ctx context.Context, accessToken string) bool
 }
 
 type VerifyTokenService interface {
@@ -76,6 +81,11 @@ type TemplateService interface {
 
 type EmailService interface {
 	SendEmail(ctx context.Context, to, subject, body string)
+}
+
+type Signer interface {
+	Sign(data []byte) (string, error)
+	Verify(data []byte, signature string) error
 }
 
 type AccessControlService interface {

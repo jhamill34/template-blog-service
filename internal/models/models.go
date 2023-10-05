@@ -7,11 +7,11 @@ type User struct {
 }
 
 type App struct {
-	AppId         string `json:"app_id"`
-	ClientId      string `json:"client_id"`
-	RedirectUri   string `json:"redirect_uri"`
-	Name          string `json:"name"`
-	Description   string `json:"description"`
+	AppId       string `json:"app_id"`
+	ClientId    string `json:"client_id"`
+	RedirectUri string `json:"redirect_uri"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
 }
 
 type Policy struct {
@@ -32,6 +32,16 @@ type SessionData struct {
 	Name      string `json:"name"`
 	Email     string `json:"email"`
 	CsrfToken string `json:"csrf_token"`
+}
+
+type AccessTokenResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	Expires      int64  `json:"expires"`
+}
+
+type PublicKeyResponse struct {
+	PublicKey string `json:"public_key"`
 }
 
 type Notifier interface {
