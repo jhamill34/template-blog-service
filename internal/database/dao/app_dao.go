@@ -147,3 +147,64 @@ func (self *ApplicationDao) List(ctx context.Context) ([]database.ApplicationEnt
 
 	return apps, nil
 }
+
+func (self *ApplicationDao) CreateRefreshToken(
+	ctx context.Context,
+	userId, appId, token string,
+) error {
+	db := self.databaseProvider.Get()
+
+	_, err := db.ExecContext(ctx, `
+		INSERT INTO refresh_token (user_id, app_id, token)
+		VALUES (?, ?, ?)
+	`, userId, appId, token)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (self *ApplicationDao) FindRefreshToken(
+	ctx context.Context,
+	token string,
+) (*database.RefreshTokenEntity, error) {
+	db := self.databaseProvider.Get()
+
+	var refreshToken database.RefreshTokenEntity
+	err := db.GetContext(ctx, &refreshToken, `
+		SELECT 
+			id, user_id, app_id, token
+		FROM refresh_token
+		WHERE token = ?
+	`, token)
+
+	if err == sql.ErrNoRows {
+		return nil, database.NotFound
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &refreshToken, nil
+}
+
+func (self *ApplicationDao) DeleteRefreshToken(
+	ctx context.Context,
+	token string,
+) error {
+	db := self.databaseProvider.Get()
+
+	_, err := db.ExecContext(ctx, `
+		DELETE FROM refresh_token
+		WHERE token = ?
+	`, token)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

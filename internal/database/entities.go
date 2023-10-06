@@ -49,3 +49,10 @@ type ApplicationEntity struct {
 	CreatedAt          time.Time `db:"created_at"`
 	UpdatedAt          time.Time `db:"updated_at"`
 }
+
+type RefreshTokenEntity struct {
+	Id     int    `db:"id"`
+	UserId string `db:"user_id"`
+	AppId  string `db:"app_id"`
+	Token  string `db:"token"`
+}

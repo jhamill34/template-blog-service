@@ -130,7 +130,7 @@ func (self *OauthRoutes) ProcessCreateApplication() http.HandlerFunc {
 
 type GetAppData struct {
 	CsrfToken string
-	App *models.App
+	App       *models.App
 }
 
 func (self *OauthRoutes) GetApplication() http.HandlerFunc {
@@ -146,7 +146,7 @@ func (self *OauthRoutes) GetApplication() http.HandlerFunc {
 				self.notificationConfig.Timeout,
 			)
 			http.Redirect(w, r, "/oauth/application", http.StatusFound)
-			return 
+			return
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -155,7 +155,7 @@ func (self *OauthRoutes) GetApplication() http.HandlerFunc {
 			w,
 			"application_detail.html",
 			"layout",
-			models.NewTemplate(GetAppData { session.CsrfToken, app }, utils.GetNotifications(r)),
+			models.NewTemplate(GetAppData{session.CsrfToken, app}, utils.GetNotifications(r)),
 		)
 	}
 }
@@ -248,7 +248,7 @@ func (self *OauthRoutes) NewSecret() http.HandlerFunc {
 			)
 			w.Header().Set("HX-Redirect", "/oauth/application/"+id)
 			w.WriteHeader(http.StatusNoContent)
-			return 
+			return
 		}
 
 		clientSecret, err := self.appService.NewSecret(r.Context(), id)
@@ -261,7 +261,7 @@ func (self *OauthRoutes) NewSecret() http.HandlerFunc {
 			)
 			w.Header().Set("HX-Redirect", "/oauth/application/"+id)
 			w.WriteHeader(http.StatusNoContent)
-			return 
+			return
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -307,7 +307,7 @@ func (self *OauthRoutes) Authorize() http.HandlerFunc {
 
 		if redirect_uri != app.RedirectUri {
 			w.WriteHeader(http.StatusBadRequest)
-			return 
+			return
 		}
 
 		code := self.appService.NewAuthCode(r.Context(), session.UserId, app.AppId)
@@ -318,51 +318,80 @@ func (self *OauthRoutes) Authorize() http.HandlerFunc {
 
 func (self *OauthRoutes) Token() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		code := r.FormValue("code")
 		grantType := r.FormValue("grant_type")
 		clientId := r.FormValue("client_id")
 		clientSecret := r.FormValue("client_secret")
-		redirectUri := r.FormValue("redirect_uri")
 
-		if grantType != "authorization_code" {
+		switch grantType {
+		case "authorization_code":
+			code := r.FormValue("code")
+			redirectUri := r.FormValue("redirect_uri")
+			userId, appId, err := self.appService.GetAuthCode(r.Context(), code)
+			if err != nil {
+				log.Println("Invalid code: ", code)
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+
+			app, err := self.appService.ValidateAppSecret(r.Context(), appId, clientSecret)
+			if err != nil {
+				log.Println("Invalid client secret: ", clientSecret)
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+
+			if app.ClientId != clientId {
+				log.Println("Invalid client id: ", clientId)
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+
+			if app.RedirectUri != redirectUri {
+				log.Println("Invalid redirect uri: ", redirectUri)
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+
+			accessTokenResponse, err := self.appService.NewAccessToken(r.Context(), userId, appId, "")
+			if err != nil {
+				panic(err)
+			}
+
+			utils.RenderJSON(w, accessTokenResponse, http.StatusOK)
+		case "refresh_token":
+			refreshToken := r.FormValue("refresh_token")
+
+			userId, appId, err := self.appService.FindRefreshToken(r.Context(), refreshToken)
+			if err != nil {
+				log.Println("Invalid refresh token: ", refreshToken)
+				w.WriteHeader(http.StatusUnauthorized)
+				return 
+			}
+
+			app, err := self.appService.ValidateAppSecret(r.Context(), appId, clientSecret)
+			if err != nil {
+				log.Println("Invalid client secret: ", clientSecret)
+				w.WriteHeader(http.StatusUnauthorized)
+				return 
+			}
+
+			if app.ClientId != clientId {
+				log.Println("Invalid client id: ", clientId)
+				w.WriteHeader(http.StatusUnauthorized)
+				return 
+			}
+
+			accessTokenResponse, err := self.appService.NewAccessToken(r.Context(), userId, appId, refreshToken)
+			if err != nil {
+				panic(err)
+			}
+
+			utils.RenderJSON(w, accessTokenResponse, http.StatusOK)
+		default:
 			log.Println("Invalid grant type: ", grantType)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-
-		userId, appId, err := self.appService.GetAuthCode(r.Context(), code)	
-		if err != nil {
-			log.Println("Invalid code: ", code)
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-
-		app, err := self.appService.ValidateAppSecret(r.Context(), appId, clientSecret)
-		if err != nil {
-			log.Println("Invalid client secret: ", clientSecret)
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-
-		if app.ClientId != clientId {
-			log.Println("Invalid client id: ", clientId)
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-
-		if app.RedirectUri != redirectUri {
-			log.Println("Invalid redirect uri: ", redirectUri)
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-
-
-		accessTokenResponse, err := self.appService.NewAccessToken(r.Context(), userId, appId)
-		if err != nil {
-			panic(err)
-		}
-
-		utils.RenderJSON(w, accessTokenResponse, http.StatusOK)
 	}
 }
 

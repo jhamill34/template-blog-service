@@ -53,8 +53,9 @@ type ApplicationService interface {
 	NewAuthCode(ctx context.Context, userId, clientId string) string
 	GetAuthCode(ctx context.Context, code string) (string, string, models.Notifier)
 	ValidateAppSecret(ctx context.Context, id, secret string) (*models.App, models.Notifier)
-	NewAccessToken(ctx context.Context, userId, clientId string) (*models.AccessTokenResponse, models.Notifier)
+	NewAccessToken(ctx context.Context, userId, clientId, refreshToken string) (*models.AccessTokenResponse, models.Notifier)
 	VerifyAccessToken(ctx context.Context, accessToken string) bool
+	FindRefreshToken(ctx context.Context, refreshToken string) (string, string, models.Notifier)
 }
 
 type VerifyTokenService interface {

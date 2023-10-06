@@ -234,6 +234,8 @@ func (self *ApplicationRepository) GetAuthCode(
 		return "", "", err
 	}
 
+	self.tokenClaimService.Destroy(ctx, parts[0])
+
 	return authCodeClaims.UserId, authCodeClaims.AppId, nil
 }
 
@@ -279,7 +281,7 @@ type AccessTokenClaims struct {
 
 func (self *ApplicationRepository) NewAccessToken(
 	ctx context.Context,
-	userId, clientId string,
+	userId, clientId, refreshToken string,
 ) (*models.AccessTokenResponse, models.Notifier) {
 	header := AccessTokenHeader{
 		Alg: "RS256",
@@ -294,7 +296,7 @@ func (self *ApplicationRepository) NewAccessToken(
 	claims := AccessTokenClaims{
 		Sub: userId,
 		Aud: clientId,
-		Iss: "auth_server",
+		Iss: "auth",
 		Exp: int64(self.accessTokenConfig.TTL.Seconds()),
 		Iat: time.Now().Unix(),
 	}
@@ -307,10 +309,17 @@ func (self *ApplicationRepository) NewAccessToken(
 	paylaod := headerString + "." + claimsString
 	signature, err := self.signer.Sign([]byte(paylaod))
 
+	if refreshToken == "" {
+		refreshToken = uuid.New().String()
+		if err := self.appDao.CreateRefreshToken(ctx, userId, clientId, refreshToken); err != nil {
+			panic(err)
+		}
+	}
+
 	return &models.AccessTokenResponse{
 		AccessToken:  paylaod + "." + signature,
-		RefreshToken: "",
-		Expires: int64(self.accessTokenConfig.TTL.Seconds()),
+		RefreshToken: refreshToken,
+		Expires:      int64(self.accessTokenConfig.TTL.Seconds()),
 	}, nil
 }
 
@@ -324,6 +333,23 @@ func (self *ApplicationRepository) VerifyAccessToken(ctx context.Context, access
 	paylaod := parts[0] + "." + parts[1]
 
 	return self.signer.Verify([]byte(paylaod), signature) == nil
+}
+
+func (self *ApplicationRepository) FindRefreshToken(
+	ctx context.Context,
+	refreshToken string,
+) (string, string, models.Notifier) {
+	refreshTokenEntity, err := self.appDao.FindRefreshToken(ctx, refreshToken)
+
+	if err == database.NotFound {
+		return "", "", services.InvalidRefreshToken
+	}
+
+	if err != nil {
+		panic(err)
+	}
+
+	return refreshTokenEntity.UserId, refreshTokenEntity.AppId, nil
 }
 
 // var _ services.ApplicationService = (*ApplicationRepository)(nil)

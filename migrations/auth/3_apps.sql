@@ -7,4 +7,6 @@ create table if not exists application (
 	description text,
 	created_at timestamp not null default current_timestamp,
 	updated_at timestamp not null default current_timestamp
-)
+);
+
+create unique index idx_application_client_id on application (client_id);
