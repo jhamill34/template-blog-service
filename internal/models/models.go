@@ -1,19 +1,5 @@
 package models
 
-type User struct {
-	UserId string `json:"user_id"`
-	Name   string `json:"name"`
-	Email  string `json:"email"`
-}
-
-type App struct {
-	AppId       string `json:"app_id"`
-	ClientId    string `json:"client_id"`
-	RedirectUri string `json:"redirect_uri"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-}
-
 type Policy struct {
 	PolicyId int    `json:"policy_id"`
 	Resource string `json:"resource"`
@@ -21,17 +7,12 @@ type Policy struct {
 	Effect   string `json:"effect"`
 }
 
-type InviteData struct {
-	InvitedBy string `json:"invited_by"`
-	Email     string `json:"email"`
-}
-
-type SessionData struct {
-	SessionId string `json:"session_id"`
-	UserId    string `json:"user_id"`
-	Name      string `json:"name"`
-	Email     string `json:"email"`
-	CsrfToken string `json:"csrf_token"`
+type AccessTokenClaims struct {
+	Sub string `json:"sub"`
+	Aud string `json:"aud"`
+	Iss string `json:"iss"`
+	Exp int64  `json:"exp"`
+	Iat int64  `json:"iat"`
 }
 
 type AccessTokenResponse struct {
@@ -42,6 +23,7 @@ type AccessTokenResponse struct {
 
 type PublicKeyResponse struct {
 	PublicKey string `json:"public_key"`
+	TTL       int64  `json:"ttl"`
 }
 
 type Notifier interface {

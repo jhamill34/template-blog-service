@@ -9,16 +9,20 @@ import (
 	"fmt"
 )
 
+type PublicKeyProvider interface {
+	GetKey() *rsa.PublicKey
+}
+
 type RcaSigner struct {
-	publicKey  *rsa.PublicKey
+	publicKeyProvider  PublicKeyProvider
 	privateKey *rsa.PrivateKey
 }
 
 func NewRcaSigner(
-	publicKey *rsa.PublicKey,
+	publicKeyProvider PublicKeyProvider,
 	privateKey *rsa.PrivateKey,
 ) *RcaSigner {
-	return &RcaSigner{publicKey, privateKey}
+	return &RcaSigner{publicKeyProvider, privateKey}
 }
 
 // Sign implements services.Signer.
@@ -50,7 +54,9 @@ func (self *RcaSigner) Sign(data []byte) (string, error) {
 
 // Verify implements services.Signer.
 func (self *RcaSigner) Verify(data []byte, signature string) error {
-	if self.publicKey == nil {
+	publicKey := self.publicKeyProvider.GetKey()
+
+	if publicKey == nil {
 		panic(fmt.Errorf("public key is nil"))
 	}
 
@@ -65,7 +71,7 @@ func (self *RcaSigner) Verify(data []byte, signature string) error {
 	}
 
 	return rsa.VerifyPSS(
-		&self.privateKey.PublicKey,
+		publicKey,
 		crypto.SHA256,
 		dataHash.Sum(nil),
 		decodedSignature,

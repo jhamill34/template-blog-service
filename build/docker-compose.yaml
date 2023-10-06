@@ -1,6 +1,56 @@
 version: '3'
 
 services:
+  app-service:
+    build:
+      context: ../
+      dockerfile: build/app/Dockerfile
+    ports:
+      - 3333:3333
+    networks:
+      - main
+    volumes:
+      - ../:/app
+    depends_on:
+      app-mysql:
+        condition: service_healthy
+      app-redis:
+        condition: service_healthy
+
+  app-mysql:
+    image: mysql:latest
+    container_name: app-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root-password
+      MYSQL_DATABASE: app-db
+      MYSQL_USER: app-user
+      MYSQL_PASSWORD: password
+    ports:
+      - "10004:3306"
+    networks:
+      - main
+    volumes:
+      - app-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      timeout: 10s
+      retries: 10
+
+  app-redis:
+    image: redis:latest
+    container_name: app-redis
+    environment:
+      - REDIS_PASSWORD=password
+    ports:
+      - "6383:6379"
+    networks:
+      - main
+    volumes:
+      - app-redis-data:/data
+    command: /bin/sh -c 'redis-server --appendonly yes --requirepass $${REDIS_PASSWORD}'
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+
   auth-service:
     build:
       context: ../
@@ -54,6 +104,8 @@ services:
 volumes:
   auth-mysql-data:
   auth-redis-data:
+  app-mysql-data:
+  app-redis-data:
 
 networks:
   main:

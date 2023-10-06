@@ -36,7 +36,7 @@ func ConfigureAuth() *Auth {
 
 	privateKey := loadPrivateKey(cfg.AccessToken.PrivateKeyPath)
 	publicKey := loadPublicKey(cfg.AccessToken.PublicKeyPath)
-	signer := rca_signer.NewRcaSigner(publicKey, privateKey)
+	signer := rca_signer.NewRcaSigner(rca_signer.NewStaticPublicKeyProvider(publicKey), privateKey)
 
 	db := database.NewMySQLDbProvider(cfg.General.Database.Path)
 

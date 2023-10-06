@@ -271,14 +271,6 @@ type AccessTokenHeader struct {
 	Typ string `json:"typ"`
 }
 
-type AccessTokenClaims struct {
-	Sub string `json:"sub"`
-	Aud string `json:"aud"`
-	Iss string `json:"iss"`
-	Exp int64  `json:"exp"`
-	Iat int64  `json:"iat"`
-}
-
 func (self *ApplicationRepository) NewAccessToken(
 	ctx context.Context,
 	userId, clientId, refreshToken string,
@@ -293,7 +285,7 @@ func (self *ApplicationRepository) NewAccessToken(
 	}
 	headerString := base64.RawURLEncoding.EncodeToString(headerBytes)
 
-	claims := AccessTokenClaims{
+	claims := models.AccessTokenClaims{
 		Sub: userId,
 		Aud: clientId,
 		Iss: "auth",

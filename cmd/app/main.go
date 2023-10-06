@@ -14,5 +14,7 @@ func main() {
 	switch service {
 	case "auth":
 		app.ConfigureAuth().Start(ctx)
+	case "app":
+		app.ConfigureApp().Start(ctx)
 	}
 }

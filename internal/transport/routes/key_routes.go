@@ -33,7 +33,7 @@ func (self *KeyRoutes) GetSigningKey() http.HandlerFunc {
 		bytes := x509.MarshalPKCS1PublicKey(self.publicKey)
 		keyString := base64.StdEncoding.EncodeToString(bytes)
 
-		publicKey := models.PublicKeyResponse{PublicKey: keyString}
+		publicKey := models.PublicKeyResponse{PublicKey: keyString, TTL: 600}
 		utils.RenderJSON(w, publicKey, http.StatusOK)
 	}
 }

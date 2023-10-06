@@ -26,8 +26,23 @@ var EmailAlreadyInUse *AuthServiceError = NewAuthServiceError("Email already in 
 var AccountAlreadyVerified *AuthServiceError = NewAuthServiceError("Account already verified")
 var AccountNotFound *AuthServiceError = NewAuthServiceError("Account not found")
 
+//==================================================
 
-//================================================== 
+type PostServiceError struct {
+	Message string
+}
+
+func (self *PostServiceError) Notify() *models.Notification {
+	return &models.Notification{Message: self.Message}
+}
+
+func NewPostServiceError(message string) *UserServiceError {
+	return &UserServiceError{Message: message}
+}
+
+var PostNotFound *UserServiceError = NewUserServiceError("Post not found")
+
+//==================================================
 
 type UserServiceError struct {
 	Message string
@@ -43,7 +58,7 @@ func NewUserServiceError(message string) *UserServiceError {
 
 var UserNotFound *UserServiceError = NewUserServiceError("User not found")
 
-//================================================== 
+//==================================================
 
 type AppServiceError struct {
 	Message string
@@ -61,7 +76,7 @@ var AppNotFound *AppServiceError = NewAppServiceError("User not found")
 var InvalidAuthCode *AppServiceError = NewAppServiceError("Invalid auth code")
 var InvalidRefreshToken *AppServiceError = NewAppServiceError("Invalid refresh token")
 
-//================================================== 
+//==================================================
 
 type TokenError struct {
 	Message string
@@ -110,4 +125,3 @@ func NewAccessControlError(message string) *AccessControlError {
 }
 
 var AccessDenied *AccessControlError = NewAccessControlError("Access denied")
-
