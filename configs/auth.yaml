@@ -36,10 +36,14 @@ general:
     read_timeout: 1s
     write_timeout: 2s
 
-  redis:
-    address: auth-redis:6379
+  cache:
+    address: auth-redis-store:6379
     password: password
- 
+
+  pubsub:
+    address: pubsub:6379
+    password: password
+
   database:
     path: "auth-user:password@tcp(auth-mysql)/auth-db?parseTime=true&multiStatements=true"
     migrations:

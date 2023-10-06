@@ -15,6 +15,10 @@ type AccessTokenClaims struct {
 	Iat int64  `json:"iat"`
 }
 
+type PolicyResponse struct {
+	User []Policy `json:"user"`
+}
+
 type AccessTokenResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`

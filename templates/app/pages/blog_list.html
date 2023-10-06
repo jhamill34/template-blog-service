@@ -1,0 +1,13 @@
+{{ template "layout.html" . }}
+
+{{ define "title" }}
+Blog Posts
+{{ end }}
+
+{{ define "content" }}
+<ul>
+{{ range . }}
+<li><a href="/blog/{{ .Id }}">{{ .Title }}</a></li>
+{{ end }}
+</ul>
+{{ end }}

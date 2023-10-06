@@ -6,7 +6,8 @@ type Configuration struct {
 	Server        ServerConfig        `yaml:"server"`
 	Database      DatabaseConfig      `yaml:"database"`
 	Template      TemplateConfig      `yaml:"template"`
-	Redis         RedisConfig         `yaml:"redis"`
+	PubSub        RedisConfig		  `yaml:"pubsub"`
+	Cache		  RedisConfig         `yaml:"cache"`
 	Notifications NotificationsConfig `yaml:"notifications"`
 }
 

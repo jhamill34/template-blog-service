@@ -1,0 +1,13 @@
+{{ template "layout.html" . }}
+
+{{ define "title" }}
+Blog
+{{ end }}
+
+{{ define "content" }}
+<h1>{{ .Title }}</h1>
+
+<section>
+	{{ .Content }}
+</section>
+{{ end }}

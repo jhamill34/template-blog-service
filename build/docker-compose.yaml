@@ -14,7 +14,9 @@ services:
     depends_on:
       app-mysql:
         condition: service_healthy
-      app-redis:
+      app-redis-store:
+        condition: service_healthy
+      pubsub:
         condition: service_healthy
 
   app-mysql:
@@ -36,9 +38,9 @@ services:
       timeout: 10s
       retries: 10
 
-  app-redis:
+  app-redis-store:
     image: redis:latest
-    container_name: app-redis
+    container_name: app-redis-store
     environment:
       - REDIS_PASSWORD=password
     ports:
@@ -64,7 +66,9 @@ services:
     depends_on:
       auth-mysql:
         condition: service_healthy
-      auth-redis:
+      auth-redis-store:
+        condition: service_healthy
+      pubsub:
         condition: service_healthy
 
   auth-mysql:
@@ -86,9 +90,9 @@ services:
       timeout: 10s
       retries: 10
 
-  auth-redis:
+  auth-redis-store:
     image: redis:latest
-    container_name: auth-redis
+    container_name: auth-redis-store
     environment:
       - REDIS_PASSWORD=password
     ports:
@@ -100,12 +104,28 @@ services:
     command: /bin/sh -c 'redis-server --appendonly yes --requirepass $${REDIS_PASSWORD}'
     healthcheck:
       test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+  
+  pubsub:
+    image: redis:latest
+    container_name: pubsub
+    environment:
+      - REDIS_PASSWORD=password
+    ports:
+      - "6384:6379"
+    networks:
+      - main
+    volumes:
+      - pubsub-data:/data
+    command: /bin/sh -c 'redis-server --appendonly yes --requirepass $${REDIS_PASSWORD}'
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
 
 volumes:
   auth-mysql-data:
   auth-redis-data:
   app-mysql-data:
   app-redis-data:
+  pubsub-data:
 
 networks:
   main:

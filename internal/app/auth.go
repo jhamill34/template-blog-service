@@ -45,8 +45,8 @@ func ConfigureAuth() *Auth {
 		AddTemplates(cfg.General.Template.Paths...)
 
 	redisClient := redis.NewClient(&redis.Options{
-		Addr:     cfg.General.Redis.Addr,
-		Password: cfg.General.Redis.Password,
+		Addr:     cfg.General.Cache.Addr,
+		Password: cfg.General.Cache.Password,
 	})
 
 	sessionStore := session.NewRedisSessionStore(
@@ -93,9 +93,19 @@ func ConfigureAuth() *Auth {
 	)
 
 	appDao := dao.NewApplicationDao(db)
+	
+	subscriber := redis.NewClient(&redis.Options{
+		Addr:     cfg.General.PubSub.Addr,
+		Password: cfg.General.PubSub.Password,
+	})
 
 	permissionModel := config.LoadRbacModel("configs/rbac_model.conf")
-	accessControlService := rbac.NewCasbinAccessControl(permissionModel, userDao)
+	accessControlService := rbac.NewCasbinAccessControl(
+		permissionModel,
+		redisClient,
+		subscriber,
+		rbac.NewDatabasePolicyProvider(userDao),
+	)
 
 	userService := repositories.NewUserRepository(userDao, accessControlService)
 	appService := repositories.NewApplicationRepository(
@@ -106,6 +116,7 @@ func ConfigureAuth() *Auth {
 		signer,
 		cfg.AccessToken,
 	)
+
 
 	return &Auth{
 		server: transport.NewServer(
@@ -132,6 +143,11 @@ func ConfigureAuth() *Auth {
 			),
 			routes.NewKeyRoutes(
 				&privateKey.PublicKey,
+			),
+			routes.NewPolicyRoutes(
+				sessionStore,
+				signer,
+				userService,
 			),
 		),
 		cleanup: func(_ context.Context) {

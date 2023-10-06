@@ -61,15 +61,20 @@ func NewTokenAuthMiddleware(signer services.Signer) func(http.Handler) http.Hand
 
 func (m *TokenAuthMiddleware) AuthorizeMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Context().Value("user") != nil {
+			next.ServeHTTP(w, r)
+			return 
+		}
+
 		token := r.Header.Get("Authorization")
 
 		if token == "" {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			next.ServeHTTP(w, r)
 			return
 		}
 
 		if len(token) < 7 || token[:7] != "Bearer " {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			next.ServeHTTP(w, r)
 			return
 		}
 
@@ -77,7 +82,7 @@ func (m *TokenAuthMiddleware) AuthorizeMiddleware(next http.Handler) http.Handle
 
 		parts := strings.Split(token, ".")
 		if len(parts) != 3 {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			next.ServeHTTP(w, r)
 			return
 		}
 
@@ -85,30 +90,30 @@ func (m *TokenAuthMiddleware) AuthorizeMiddleware(next http.Handler) http.Handle
 		paylaod := parts[0] + "." + parts[1]
 
 		if m.signer.Verify([]byte(paylaod), signature) != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			next.ServeHTTP(w, r)
 			return
 		}
 
 		claimsData, err := base64.RawURLEncoding.DecodeString(parts[1])
 		if err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			next.ServeHTTP(w, r)
 			return
 		}
 		var claims models.AccessTokenClaims
 		err = json.Unmarshal(claimsData, &claims)
 		if err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			next.ServeHTTP(w, r)
 			return
 		}
 
 		expiresAt := claims.Iat + claims.Exp
 		if time.Now().Unix() > expiresAt {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			next.ServeHTTP(w, r)
 			return
 		}
 
 		if claims.Iss != "auth" {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			next.ServeHTTP(w, r)
 			return
 		}
 
@@ -122,7 +127,21 @@ func (m *TokenAuthMiddleware) AuthorizeMiddleware(next http.Handler) http.Handle
 		}
 
 		ctx := context.WithValue(r.Context(), "user", &sessionData)
+		ctx = context.WithValue(ctx, "token", token)
 		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func UnauthorizedMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := r.Context().Value("user")
+
+		if user == nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		next.ServeHTTP(w, r)
 	})
 }
 

@@ -31,6 +31,10 @@ func (self *PostRepository) CreatePost(
 	content string,
 	author string,
 ) (*models.PostStub, models.Notifier) {
+	if err := self.accessControlService.Enforce(ctx, "/blog", "create"); err != nil {
+		return nil, services.AccessDenied
+	}
+
 	postId, err := self.postDao.CreatePost(ctx, title, content, author)
 	if err != nil {
 		panic(err)
@@ -64,18 +68,61 @@ func (self *PostRepository) GetPost(
 }
 
 // UpdatePost implements services.BlogPostService.
-func (*PostRepository) UpdatePost(
+func (self *PostRepository) UpdatePost(
 	ctx context.Context,
 	id string,
 	title string,
 	content string,
 ) (*models.PostStub, models.Notifier) {
-	panic("unimplemented")
+	if err := self.accessControlService.Enforce(ctx, "/blog/"+id, "update"); err != nil {
+		post, err := self.postDao.GetPost(ctx, id)
+		if err == database.NotFound {
+			return nil, services.AccessDenied
+		}
+
+		if post.Author != ctx.Value("user").(*models.SessionData).UserId {
+			return nil, services.AccessDenied
+		}
+	}
+
+	err := self.postDao.UpdatePost(ctx, id, title, content)
+	if err == database.NotFound {
+		return nil, services.PostNotFound
+	}
+
+	if err != nil {
+		panic(err)
+	}
+
+	return &models.PostStub{
+		Id:    id,
+		Title: title,
+	}, nil
 }
 
 // DeletePost implements services.BlogPostService.
-func (*PostRepository) DeletePost(ctx context.Context, id string) models.Notifier {
-	panic("unimplemented")
+func (self *PostRepository) DeletePost(ctx context.Context, id string) models.Notifier {
+	if err := self.accessControlService.Enforce(ctx, "/blog/"+id, "delete"); err != nil {
+		post, err := self.postDao.GetPost(ctx, id)
+		if err == database.NotFound {
+			return services.AccessDenied
+		}
+
+		if post.Author != ctx.Value("user").(*models.SessionData).UserId {
+			return services.AccessDenied
+		}
+	}
+
+	err := self.postDao.DeletePost(ctx, id)
+	if err == database.NotFound {
+		return services.PostNotFound
+	}
+
+	if err != nil {
+		panic(err)
+	}
+
+	return nil
 }
 
 // ListPosts implements services.BlogPostService.

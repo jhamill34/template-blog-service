@@ -16,7 +16,10 @@ func NewPostDao(databaseProvider database.DatabaseProvider) *PostDao {
 	return &PostDao{databaseProvider: databaseProvider}
 }
 
-func (self *PostDao) CreatePost(ctx context.Context, title, content, author string) (string, error) {
+func (self *PostDao) CreatePost(
+	ctx context.Context,
+	title, content, author string,
+) (string, error) {
 	db := self.databaseProvider.Get()
 	id := uuid.New().String()
 
@@ -52,24 +55,26 @@ func (self *PostDao) GetPost(ctx context.Context, id string) (*database.Post, er
 	return &post, nil
 }
 
-func (self *PostDao) UpdatePost(ctx context.Context, id, title, content string) (*database.Post, error) {
+func (self *PostDao) UpdatePost(
+	ctx context.Context,
+	id, title, content string,
+) error {
 	db := self.databaseProvider.Get()
 
-	var post database.Post
-	err := db.GetContext(ctx, &post, `
+	_, err := db.ExecContext(ctx, `
 		UPDATE post
 		SET title = ?, content = ?
 		WHERE id = ?
 	`, title, content, id)
 	if err == sql.ErrNoRows {
-		return nil, database.NotFound
+		return database.NotFound
 	}
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return &post, nil
+	return nil
 }
 
 func (self *PostDao) DeletePost(ctx context.Context, id string) error {
@@ -105,4 +110,3 @@ func (self *PostDao) ListPosts(ctx context.Context) ([]database.Post, error) {
 
 	return posts, nil
 }
-
