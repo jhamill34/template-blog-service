@@ -56,6 +56,7 @@ func NewGatewayRoutes(
 // Routes implements transport.Router.
 func (self *GatewayRoutes) Routes() (string, http.Handler) {
 	router := chi.NewRouter()
+	router.Use(middleware.NewAuthorizeMiddleware(self.sessionService))
 
 	router.Get("/", self.Index())
 	router.Get("/oauth/authorize", self.Authorize())
@@ -66,10 +67,12 @@ func (self *GatewayRoutes) Routes() (string, http.Handler) {
 	router.Get("/blog/{id}", self.GetPost())
 
 	router.Group(func(group chi.Router) {
-		group.Use(middleware.NewAuthorizeMiddleware(self.sessionService))
 		group.Use(middleware.RedirectToIndexMiddleware)
 		group.Get("/blog/new", self.NewPost())
 		group.Post("/blog", self.ProcessNewPost())
+		group.Get("/blog/{id}/edit", self.EditPost())
+		group.Put("/blog/{id}", self.ProcessEditPost())
+		group.Delete("/blog/{id}", self.ProcessDeletePost())
 	})
 
 	return "/", router
@@ -85,7 +88,7 @@ func (self *GatewayRoutes) ListPosts() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var posts []models.PostStub
 		var err *models.Notification
-		err = self.forward(r, &posts)
+		err = self.forward(r, nil, &posts)
 		if err == nil {
 			err = utils.GetNotifications(r)
 		}
@@ -105,7 +108,7 @@ func (self *GatewayRoutes) GetPost() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var post models.PostContent
 		var err *models.Notification
-		err = self.forward(r, &post)
+		err = self.forward(r, nil, &post)
 		if err != nil {
 			utils.SetNotifications(
 				w,
@@ -114,7 +117,7 @@ func (self *GatewayRoutes) GetPost() http.HandlerFunc {
 				self.notificationConfig.Timeout,
 			)
 			http.Redirect(w, r, "/blog", http.StatusFound)
-			return 
+			return
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -125,6 +128,82 @@ func (self *GatewayRoutes) GetPost() http.HandlerFunc {
 			"layout",
 			models.NewTemplate(&post, utils.GetNotifications(r)),
 		)
+	}
+}
+
+func (self *GatewayRoutes) EditPost() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		csrfToken := r.Context().Value("csrf_token").(string)
+		id := chi.URLParam(r, "id")
+		endpoint := "/blog/" + id
+
+		var post models.PostContent
+		err := self.forward(r, &endpoint, &post)
+		if err != nil {
+			utils.SetNotifications(
+				w,
+				err,
+				"/blog",
+				self.notificationConfig.Timeout,
+			)
+			http.Redirect(w, r, "/blog", http.StatusFound)
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		self.templateService.Render(
+			w,
+			"blog_edit.html",
+			"layout",
+			models.NewTemplate(
+				map[string]interface{}{
+					"CsrfToken": csrfToken,
+					"Post":      post,
+				},
+				utils.GetNotifications(r),
+			),
+		)
+	}
+}
+
+func (self *GatewayRoutes) ProcessEditPost() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := chi.URLParam(r, "id")
+		userCsrfToken := r.Context().Value("csrf_token").(string)
+		csrfToken := r.FormValue("csrf_token")
+		if userCsrfToken != csrfToken {
+			utils.SetNotifications(
+				w,
+				&models.Notification{
+					Message: "Bad Request",
+				},
+				"/blog/"+id,
+				self.notificationConfig.Timeout,
+			)
+			w.Header().Set("HX-Redirect", "/blog/"+id)
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		err := self.forward(r, nil, nil)
+		if err != nil {
+			utils.SetNotifications(
+				w,
+				err,
+				"/blog/"+id,
+				self.notificationConfig.Timeout,
+			)
+			w.Header().Set("HX-Redirect", "/blog/"+id)
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		sessionId := r.Context().Value("session_id").(string)
+		self.sessionService.UpdateCsrf(r.Context(), sessionId, uuid.New().String())
+
+		w.Header().Set("HX-Redirect", "/blog/"+id)
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 
@@ -150,7 +229,22 @@ func (self *GatewayRoutes) NewPost() http.HandlerFunc {
 
 func (self *GatewayRoutes) ProcessNewPost() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		err := self.forward(r, nil)
+		userCsrfToken := r.Context().Value("csrf_token").(string)
+		csrfToken := r.FormValue("csrf_token")
+		if userCsrfToken != csrfToken {
+			utils.SetNotifications(
+				w,
+				&models.Notification{
+					Message: "Bad Request",
+				},
+				"/blog/new",
+				self.notificationConfig.Timeout,
+			)
+			http.Redirect(w, r, "/blog/new", http.StatusFound)
+			return
+		}
+
+		err := self.forward(r, nil, nil)
 		if err != nil {
 			utils.SetNotifications(
 				w,
@@ -161,11 +255,52 @@ func (self *GatewayRoutes) ProcessNewPost() http.HandlerFunc {
 			http.Redirect(w, r, "/blog/new", http.StatusFound)
 			return
 		}
-		
+
 		sessionId := r.Context().Value("session_id").(string)
 		self.sessionService.UpdateCsrf(r.Context(), sessionId, uuid.New().String())
 
 		http.Redirect(w, r, "/blog", http.StatusFound)
+	}
+}
+
+func (self *GatewayRoutes) ProcessDeletePost() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := chi.URLParam(r, "id")
+		userCsrfToken := r.Context().Value("csrf_token").(string)
+		csrfToken := r.URL.Query().Get("csrf_token")
+		if userCsrfToken != csrfToken {
+			utils.SetNotifications(
+				w,
+				&models.Notification{
+					Message: "Bad Request",
+				},
+				"/blog/"+id+"/edit",
+				self.notificationConfig.Timeout,
+			)
+			w.Header().Set("HX-Redirect", "/blog/"+id+"/edit")
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		err := self.forward(r, nil, nil)
+		if err != nil {
+			utils.SetNotifications(
+				w,
+				err,
+				"/blog/"+id+"/edit",
+				self.notificationConfig.Timeout,
+			)
+			w.Header().Set("HX-Redirect", "/blog/"+id+"/edit")
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+
+		sessionId := r.Context().Value("session_id").(string)
+		self.sessionService.UpdateCsrf(r.Context(), sessionId, uuid.New().String())
+
+		w.Header().Set("HX-Redirect", "/blog")
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 
@@ -180,8 +315,18 @@ func (self *ForwardError) Notify() *models.Notification {
 	}
 }
 
-func (self *GatewayRoutes) forward(r *http.Request, data interface{}) *models.Notification {
-	endpoint, err := url.Parse(r.URL.String())
+func (self *GatewayRoutes) forward(
+	r *http.Request,
+	toUrl *string,
+	data interface{},
+) *models.Notification {
+	var endpointString string
+	if toUrl != nil {
+		endpointString = *toUrl
+	} else {
+		endpointString = r.URL.String()
+	}
+	endpoint, err := url.Parse(endpointString)
 	if err != nil {
 		panic(err)
 	}
@@ -192,7 +337,12 @@ func (self *GatewayRoutes) forward(r *http.Request, data interface{}) *models.No
 	}
 	endpoint.Host = self.appServer
 
-	appReq, err := http.NewRequestWithContext(r.Context(), r.Method, endpoint.String(), r.Body)
+	appReq, err := http.NewRequestWithContext(
+		r.Context(),
+		r.Method,
+		endpoint.String(),
+		bytes.NewBufferString(r.Form.Encode()),
+	)
 	if err != nil {
 		panic(err)
 	}
@@ -200,7 +350,7 @@ func (self *GatewayRoutes) forward(r *http.Request, data interface{}) *models.No
 
 	tokenData, ok := r.Context().Value("token").(*models.AccessTokenResponse)
 	if ok && tokenData != nil {
-		appReq.Header.Add("Authorization", fmt.Sprintf("Bearer %s", tokenData.AccessToken))
+		appReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenData.AccessToken))
 	}
 
 	appres, err := self.httpClient.Do(appReq)
@@ -208,14 +358,14 @@ func (self *GatewayRoutes) forward(r *http.Request, data interface{}) *models.No
 		panic(err)
 	}
 
-	if  appres.StatusCode >= 200 && appres.StatusCode < 300 {
+	if appres.StatusCode >= 200 && appres.StatusCode < 300 {
 		if data != nil {
 			json.NewDecoder(appres.Body).Decode(data)
 		}
 		return nil
 	}
 
-	var forwardError models.Notification 
+	var forwardError models.Notification
 	json.NewDecoder(appres.Body).Decode(&forwardError)
 	return &forwardError
 }
