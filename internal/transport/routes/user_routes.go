@@ -106,7 +106,7 @@ type PolicyListData struct {
 
 func (self *UserRoutes) ListPolicies() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		user := r.Context().Value("user").(*models.SessionData)
+		userCsrfToken := r.Context().Value("csrf_token").(string)
 		userId := chi.URLParam(r, "id")
 
 		policies, err := self.userService.ListPolicies(r.Context(), userId)
@@ -126,7 +126,7 @@ func (self *UserRoutes) ListPolicies() http.HandlerFunc {
 			w,
 			"users_policy_list.html",
 			"layout",
-			models.NewTemplate(PolicyListData{userId, user.CsrfToken, policies}, utils.GetNotifications(r)),
+			models.NewTemplate(PolicyListData{userId, userCsrfToken, policies}, utils.GetNotifications(r)),
 		)
 	}
 }
@@ -138,7 +138,7 @@ type NewPolicyData struct {
 
 func (self *UserRoutes) CreatePolicy() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		user := r.Context().Value("user").(*models.SessionData)
+		userCsrfToken := r.Context().Value("csrf_token").(string)
 		userId := chi.URLParam(r, "id")
 
 		w.WriteHeader(http.StatusOK)
@@ -146,14 +146,15 @@ func (self *UserRoutes) CreatePolicy() http.HandlerFunc {
 			w,
 			"users_policy_create.html",
 			"layout",
-			models.NewTemplate(NewPolicyData{userId, user.CsrfToken}, utils.GetNotifications(r)),
+			models.NewTemplate(NewPolicyData{userId, userCsrfToken}, utils.GetNotifications(r)),
 		)
 	}
 }
 
 func (self *UserRoutes) ProcessCreatePolicy() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		user := r.Context().Value("user").(*models.SessionData)
+		userCsrfToken := r.Context().Value("csrf_token").(string)
+		sessionId := r.Context().Value("session_id").(string)
 		userId := chi.URLParam(r, "id")
 
 		resource := r.FormValue("resource")
@@ -161,7 +162,7 @@ func (self *UserRoutes) ProcessCreatePolicy() http.HandlerFunc {
 		effect := r.FormValue("effect")
 		csrfToken := r.FormValue("csrf_token")
 
-		if csrfToken != user.CsrfToken {
+		if csrfToken != userCsrfToken {
 			utils.SetNotifications(
 				w,
 				utils.NewGenericMessage("Bad request, try again"),
@@ -183,8 +184,7 @@ func (self *UserRoutes) ProcessCreatePolicy() http.HandlerFunc {
 			return
 		}
 
-		user.CsrfToken = uuid.New().String()
-		self.sessionService.Update(r.Context(), user)
+		self.sessionService.UpdateCsrf(r.Context(), sessionId, uuid.New().String())
 
 		http.Redirect(w, r, "/user/"+userId+"/policy", http.StatusSeeOther)
 	}
@@ -192,12 +192,13 @@ func (self *UserRoutes) ProcessCreatePolicy() http.HandlerFunc {
 
 func (self *UserRoutes) DeletePolicy() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		user := r.Context().Value("user").(*models.SessionData)
+		userCsrfToken := r.Context().Value("csrf_token").(string)
+		sessionId := r.Context().Value("session_id").(string)
 		userId := chi.URLParam(r, "id")
 		policyId := chi.URLParam(r, "policyId")
 		csrfToken := r.URL.Query().Get("csrf_token")
 
-		if csrfToken != user.CsrfToken {
+		if csrfToken != userCsrfToken {
 			utils.SetNotifications(
 				w,
 				utils.NewGenericMessage("Bad request, try again"),
@@ -221,8 +222,7 @@ func (self *UserRoutes) DeletePolicy() http.HandlerFunc {
 			return
 		}
 
-		user.CsrfToken = uuid.New().String()
-		self.sessionService.Update(r.Context(), user)
+		self.sessionService.UpdateCsrf(r.Context(), sessionId, uuid.New().String())
 
 		w.Header().Set("HX-Redirect", "/user/"+userId+"/policy")
 		w.WriteHeader(http.StatusNoContent)

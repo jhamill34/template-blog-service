@@ -32,15 +32,11 @@ func ConfigureApp() *App {
 	)
 	signer := rca_signer.NewRcaSigner(publicKeyProvider, nil)
 
-	db := database.NewMySQLDbProvider(cfg.General.Database.Path)
+	db := database.NewMySQLDbProvider(cfg.Database.Path)
 	policyStore := redis.NewClient(&redis.Options{
-		Addr:     cfg.General.Cache.Addr,
-		Password: cfg.General.Cache.Password,
+		Addr:     cfg.Cache.Addr,
+		Password: cfg.Cache.Password,
 	})
-
-	templateRepository := repositories.
-		NewTemplateRepository(cfg.General.Template.Common...).
-		AddTemplates(cfg.General.Template.Paths...)
 
 	permissionModel := config.LoadRbacModel("configs/rbac_model.conf")
 	accessControlService := rbac.NewCasbinAccessControl(
@@ -51,8 +47,8 @@ func ConfigureApp() *App {
 	)
 
 	subscriber := redis.NewClient(&redis.Options{
-		Addr:     cfg.General.PubSub.Addr,
-		Password: cfg.General.PubSub.Password,
+		Addr:     cfg.PubSub.Addr,
+		Password: cfg.PubSub.Password,
 	})
 
 	postDao := dao.NewPostDao(db)
@@ -62,11 +58,9 @@ func ConfigureApp() *App {
 
 	return &App{
 		server: transport.NewServer(
-			cfg.General.Server,
+			cfg.Server,
 			routes.NewBlogRoutes(
 				postService,
-				templateRepository,
-				cfg.General.Notifications,
 				signer,
 			),
 		),
@@ -74,7 +68,7 @@ func ConfigureApp() *App {
 			db.Close()
 		},
 		setup: func(ctx context.Context) {
-			err := database.Migrate(db, cfg.General.Database.Migrations)
+			err := database.Migrate(db, cfg.Database.Migrations)
 			if err != nil {
 				panic(err)
 			}

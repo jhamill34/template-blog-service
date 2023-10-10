@@ -37,3 +37,9 @@ type Notifier interface {
 type Notification struct {
 	Message string `json:"message"`
 }
+
+type SessionData struct {
+	Payload   string `json:"payload"`
+	Type      string `json:"type"`
+	CsrfToken string `json:"csrf_token"`
+}

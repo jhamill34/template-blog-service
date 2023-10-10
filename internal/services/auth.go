@@ -11,7 +11,7 @@ type AuthService interface {
 		ctx context.Context,
 		email string,
 		password string,
-	) (*models.SessionData, models.Notifier)
+	) (*models.User, models.Notifier)
 	CreateUser(ctx context.Context, username, email, password string) models.Notifier
 	VerifyInvite(
 		ctx context.Context,
@@ -27,7 +27,7 @@ type AuthService interface {
 	VerifyUser(ctx context.Context, id, token string) models.Notifier
 	CreateForgotPasswordToken(ctx context.Context, email string) models.Notifier
 
-	GetUserByEmail(ctx context.Context, email string) (*models.User, models.Notifier)
+	GetUserById(ctx context.Context, id string) (*models.User, models.Notifier)
 	GetUserByUsername(ctx context.Context, username string) (*models.User, models.Notifier)
 }
 
@@ -68,9 +68,3 @@ type TokenClaimsService interface {
 	Destroy(ctx context.Context, id string)
 }
 
-type SessionService interface {
-	Create(ctx context.Context, data *models.SessionData) string
-	Find(ctx context.Context, id string, data *models.SessionData) models.Notifier
-	Update(ctx context.Context, data *models.SessionData) models.Notifier
-	Destroy(ctx context.Context, id string)
-}

@@ -22,7 +22,12 @@ type HashParams struct {
 }
 
 type AuthConfig struct {
-	General           Configuration            `yaml:"general"`
+	Server            ServerConfig             `yaml:"server"`
+	Database          DatabaseConfig           `yaml:"database"`
+	Template          TemplateConfig           `yaml:"template"`
+	PubSub            RedisConfig              `yaml:"pubsub"`
+	Cache             RedisConfig              `yaml:"cache"`
+	Notifications     NotificationsConfig      `yaml:"notifications"`
 	DefaultUser       *User                    `yaml:"default_user"`
 	PasswordConfig    *HashParams              `yaml:"password_config"`
 	Session           SessionConfig            `yaml:"session"`
@@ -37,12 +42,6 @@ type AccessTokenConfiguration struct {
 	PublicKeyPath  string        `yaml:"public_key_path"`
 	PrivateKeyPath string        `yaml:"private_key_path"`
 	TTL            time.Duration `yaml:"ttl"`
-}
-
-type SessionConfig struct {
-	TTL        time.Duration `yaml:"ttl"`
-	CookieTTL  time.Duration `yaml:"cookie_ttl"`
-	SigningKey []byte        `yaml:"signing_key"`
 }
 
 func LoadAuthConfig(filename string) (AuthConfig, error) {

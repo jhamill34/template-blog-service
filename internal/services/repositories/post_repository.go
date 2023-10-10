@@ -80,7 +80,7 @@ func (self *PostRepository) UpdatePost(
 			return nil, services.AccessDenied
 		}
 
-		if post.Author != ctx.Value("user").(*models.SessionData).UserId {
+		if userId, ok := ctx.Value("user_id").(string); !ok || post.Author != userId {
 			return nil, services.AccessDenied
 		}
 	}
@@ -108,7 +108,7 @@ func (self *PostRepository) DeletePost(ctx context.Context, id string) models.No
 			return services.AccessDenied
 		}
 
-		if post.Author != ctx.Value("user").(*models.SessionData).UserId {
+		if userId, ok := ctx.Value("user_id").(string); !ok || post.Author != userId {
 			return services.AccessDenied
 		}
 	}

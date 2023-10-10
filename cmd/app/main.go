@@ -12,6 +12,8 @@ func main() {
 	
 	service := os.Args[1]
 	switch service {
+	case "gateway":
+		app.ConfigureGateway().Start(ctx)
 	case "auth":
 		app.ConfigureAuth().Start(ctx)
 	case "app":

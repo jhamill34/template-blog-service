@@ -41,9 +41,9 @@ func (self *PolicyRoutes) Routes() (string, http.Handler) {
 
 func (self *PolicyRoutes) ListMyPolicies() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		sessionData := r.Context().Value("user").(*models.SessionData)
+		userId := r.Context().Value("user_id").(string)
 
-		policies, err := self.userService.ListPolicies(r.Context(), sessionData.UserId)
+		policies, err := self.userService.ListPolicies(r.Context(), userId)
 		if err != nil {
 			panic(err)
 		}

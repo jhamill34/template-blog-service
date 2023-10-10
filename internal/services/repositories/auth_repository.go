@@ -49,7 +49,7 @@ func NewAuthRepository(
 func (repo *AuthRepository) LoginUser(
 	ctx context.Context,
 	email, password string,
-) (*models.SessionData, models.Notifier) {
+) (*models.User, models.Notifier) {
 	password = strings.TrimSpace(password)
 	user, err := repo.userDao.FindByEmail(ctx, email)
 
@@ -74,20 +74,18 @@ func (repo *AuthRepository) LoginUser(
 		return nil, services.UnverifiedUser
 	}
 
-	return &models.SessionData{
-		SessionId: uuid.New().String(),
-		UserId:    user.Id,
-		Name:      user.Name,
-		Email:     user.Email,
-		CsrfToken: uuid.New().String(),
+	return &models.User{
+		UserId: user.Id,
+		Email:  user.Email,
+		Name:   user.Name,
 	}, nil
 }
 
-func (repo *AuthRepository) GetUserByEmail(
+func (repo *AuthRepository) GetUserById(
 	ctx context.Context,
-	email string,
+	id string,
 ) (*models.User, models.Notifier) {
-	user, err := repo.userDao.FindByEmail(ctx, email)
+	user, err := repo.userDao.FindById(ctx, id)
 
 	if err == database.NotFound {
 		return nil, services.AccountNotFound

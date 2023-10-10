@@ -1,30 +1,19 @@
-general:
-  server:
-    port: 3333
-    idle_timeout: 60s
-    read_timeout: 1s
-    write_timeout: 2s
+server:
+  port: 3333
+  idle_timeout: 60s
+  read_timeout: 1s
+  write_timeout: 2s
 
-  cache:
-    address: app-redis-store:6379
-    password: password
-  
-  pubsub:
-    address: pubsub:6379
-    password: password
+cache:
+  address: app-redis-store:6379
+  password: password
 
-  database:
-    path: "app-user:password@tcp(app-mysql)/app-db?parseTime=true&multiStatements=true"
-    migrations:
-      - "./migrations/app/*.sql"
+pubsub:
+  address: pubsub:6379
+  password: password
 
-  notifications:
-    timeout: 1s
-  
-  template:
-    common: 
-      - "./templates/app/components/*.html"
-    paths:
-      - "./templates/app/pages/*.html"
-
+database:
+  path: "app-user:password@tcp(app-mysql)/app-db?parseTime=true&multiStatements=true"
+  migrations:
+    - "./migrations/app/*.sql"
 

@@ -61,7 +61,7 @@ func (r *OauthRoutes) Routes() (string, http.Handler) {
 
 func (self *OauthRoutes) CreateApplication() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		session := r.Context().Value("user").(*models.SessionData)
+		userCsrfToken := r.Context().Value("csrf_token").(string)
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
@@ -70,7 +70,9 @@ func (self *OauthRoutes) CreateApplication() http.HandlerFunc {
 			"application_create.html",
 			"layout",
 			models.NewTemplate(
-				session,
+				map[string]string {
+					"CsrfToken": userCsrfToken,
+				},
 				utils.GetNotifications(r),
 			),
 		)
@@ -79,14 +81,15 @@ func (self *OauthRoutes) CreateApplication() http.HandlerFunc {
 
 func (self *OauthRoutes) ProcessCreateApplication() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		session := r.Context().Value("user").(*models.SessionData)
+		sessionId := r.Context().Value("session_id").(string)
+		userCsrfToken := r.Context().Value("csrf_token").(string)
 
 		name := r.FormValue("name")
 		description := r.FormValue("description")
 		redirectUri := r.FormValue("redirect_uri")
 		csrfToken := r.FormValue("csrf_token")
 
-		if csrfToken != session.CsrfToken {
+		if csrfToken != userCsrfToken {
 			utils.SetNotifications(
 				w,
 				utils.NewGenericMessage("bad request, please try again."),
@@ -114,8 +117,7 @@ func (self *OauthRoutes) ProcessCreateApplication() http.HandlerFunc {
 			return
 		}
 
-		session.CsrfToken = uuid.New().String()
-		self.sessionService.Update(r.Context(), session)
+		self.sessionService.UpdateCsrf(r.Context(), sessionId, uuid.New().String())
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
@@ -135,7 +137,7 @@ type GetAppData struct {
 
 func (self *OauthRoutes) GetApplication() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		session := r.Context().Value("user").(*models.SessionData)
+		userCsrfToken := r.Context().Value("csrf_token").(string)
 		id := chi.URLParam(r, "id")
 		app, err := self.appService.GetApp(r.Context(), id)
 		if err != nil {
@@ -155,18 +157,19 @@ func (self *OauthRoutes) GetApplication() http.HandlerFunc {
 			w,
 			"application_detail.html",
 			"layout",
-			models.NewTemplate(GetAppData{session.CsrfToken, app}, utils.GetNotifications(r)),
+			models.NewTemplate(GetAppData{userCsrfToken, app}, utils.GetNotifications(r)),
 		)
 	}
 }
 
 func (self *OauthRoutes) DeleteApplication() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		session := r.Context().Value("user").(*models.SessionData)
+		sessionId := r.Context().Value("session_id").(string)
+		userCsrfToken := r.Context().Value("csrf_token").(string)
 		id := chi.URLParam(r, "id")
 		csrfToken := r.URL.Query().Get("csrf_token")
 
-		if csrfToken != session.CsrfToken {
+		if csrfToken != userCsrfToken {
 			utils.SetNotifications(
 				w,
 				utils.NewGenericMessage("bad request, please try again."),
@@ -190,8 +193,7 @@ func (self *OauthRoutes) DeleteApplication() http.HandlerFunc {
 			return
 		}
 
-		session.CsrfToken = uuid.New().String()
-		self.sessionService.Update(r.Context(), session)
+		self.sessionService.UpdateCsrf(r.Context(), sessionId, uuid.New().String())
 
 		w.Header().Set("HX-Redirect", "/oauth/application")
 		w.WriteHeader(http.StatusNoContent)
@@ -205,7 +207,7 @@ type ApplicationListData struct {
 
 func (self *OauthRoutes) ListApplications() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		session := r.Context().Value("user").(*models.SessionData)
+		userCsrfToken := r.Context().Value("csrf_token").(string)
 		apps, err := self.appService.ListApps(r.Context())
 
 		if err != nil {
@@ -226,7 +228,7 @@ func (self *OauthRoutes) ListApplications() http.HandlerFunc {
 			"application_list.html",
 			"layout",
 			models.NewTemplate(
-				ApplicationListData{session.CsrfToken, apps},
+				ApplicationListData{userCsrfToken, apps},
 				utils.GetNotifications(r),
 			),
 		)
@@ -235,11 +237,12 @@ func (self *OauthRoutes) ListApplications() http.HandlerFunc {
 
 func (self *OauthRoutes) NewSecret() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		session := r.Context().Value("user").(*models.SessionData)
+		sessionId := r.Context().Value("session_id").(string)
+		userCsrfToken := r.Context().Value("csrf_token").(string)
 		id := chi.URLParam(r, "id")
 		csrfToken := r.URL.Query().Get("csrf_token")
 
-		if csrfToken != session.CsrfToken {
+		if csrfToken != userCsrfToken {
 			utils.SetNotifications(
 				w,
 				utils.NewGenericMessage("bad request, please try again."),
@@ -264,6 +267,8 @@ func (self *OauthRoutes) NewSecret() http.HandlerFunc {
 			return
 		}
 
+		self.sessionService.UpdateCsrf(r.Context(), sessionId, uuid.New().String())
+		
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		self.templateService.Render(
@@ -283,7 +288,7 @@ func (self *OauthRoutes) Authorize() http.HandlerFunc {
 			return
 		}
 
-		session := r.Context().Value("user").(*models.SessionData)
+		userId := r.Context().Value("user_id").(string)
 
 		client_id := r.URL.Query().Get("client_id")
 		redirect_uri := r.URL.Query().Get("redirect_uri")
@@ -310,7 +315,7 @@ func (self *OauthRoutes) Authorize() http.HandlerFunc {
 			return
 		}
 
-		code := self.appService.NewAuthCode(r.Context(), session.UserId, app.AppId)
+		code := self.appService.NewAuthCode(r.Context(), userId, app.AppId)
 
 		http.Redirect(w, r, redirect_uri+"?code="+code+"&state="+state, http.StatusFound)
 	}

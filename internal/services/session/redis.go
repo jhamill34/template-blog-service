@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jhamill34/notion-provisioner/internal/models"
 	"github.com/jhamill34/notion-provisioner/internal/services"
 	"github.com/redis/go-redis/v9"
@@ -39,7 +40,7 @@ func NewRedisSessionStore(
 // Create implements services.SessionService.
 func (self *RedisSessionStore) Create(ctx context.Context, data *models.SessionData) string {
 	var err error
-	id := data.SessionId
+	id := uuid.New().String()
 	key := PREFIX + id
 
 	b64Data := encodeData(data)
@@ -108,12 +109,12 @@ func (self *RedisSessionStore) Find(
 	return nil
 }
 
-func (self *RedisSessionStore) Update(
+func (self *RedisSessionStore) UpdateCsrf(
 	ctx context.Context,
-	data *models.SessionData,
+	id, csrfToken string,
 ) models.Notifier {
 	var err error
-	key := PREFIX + data.SessionId
+	key := PREFIX + id
 
 	val, err := self.redisClient.Get(ctx, key).Result()
 	if err == redis.Nil {
@@ -138,6 +139,10 @@ func (self *RedisSessionStore) Update(
 	saltIndex := strings.Index(string(b64Data), "/")
 
 	salt := b64Data[saltIndex+1:]
+
+	data := models.SessionData{}
+	decodeData(string(b64Data[:saltIndex]), &data)
+	data.CsrfToken = csrfToken
 	newData := encodeData(data)
 
 	payload := newData + "/" + string(salt)

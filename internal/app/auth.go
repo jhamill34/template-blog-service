@@ -38,15 +38,15 @@ func ConfigureAuth() *Auth {
 	publicKey := loadPublicKey(cfg.AccessToken.PublicKeyPath)
 	signer := rca_signer.NewRcaSigner(rca_signer.NewStaticPublicKeyProvider(publicKey), privateKey)
 
-	db := database.NewMySQLDbProvider(cfg.General.Database.Path)
+	db := database.NewMySQLDbProvider(cfg.Database.Path)
 
 	templateRepository := repositories.
-		NewTemplateRepository(cfg.General.Template.Common...).
-		AddTemplates(cfg.General.Template.Paths...)
+		NewTemplateRepository(cfg.Template.Common...).
+		AddTemplates(cfg.Template.Paths...)
 
 	redisClient := redis.NewClient(&redis.Options{
-		Addr:     cfg.General.Cache.Addr,
-		Password: cfg.General.Cache.Password,
+		Addr:     cfg.Cache.Addr,
+		Password: cfg.Cache.Password,
 	})
 
 	sessionStore := session.NewRedisSessionStore(
@@ -95,8 +95,8 @@ func ConfigureAuth() *Auth {
 	appDao := dao.NewApplicationDao(db)
 	
 	subscriber := redis.NewClient(&redis.Options{
-		Addr:     cfg.General.PubSub.Addr,
-		Password: cfg.General.PubSub.Password,
+		Addr:     cfg.PubSub.Addr,
+		Password: cfg.PubSub.Password,
 	})
 
 	permissionModel := config.LoadRbacModel("configs/rbac_model.conf")
@@ -120,9 +120,9 @@ func ConfigureAuth() *Auth {
 
 	return &Auth{
 		server: transport.NewServer(
-			cfg.General.Server,
+			cfg.Server,
 			routes.NewAuthRoutes(
-				cfg.General.Notifications,
+				cfg.Notifications,
 				cfg.Session,
 				authRepo,
 				sessionStore,
@@ -133,10 +133,10 @@ func ConfigureAuth() *Auth {
 				appService,
 				sessionStore,
 				templateRepository,
-				cfg.General.Notifications,
+				cfg.Notifications,
 			),
 			routes.NewUserRoutes(
-				cfg.General.Notifications,
+				cfg.Notifications,
 				sessionStore,
 				templateRepository,
 				userService,
@@ -154,7 +154,7 @@ func ConfigureAuth() *Auth {
 			db.Close()
 		},
 		setup: func(ctx context.Context) {
-			err := database.Migrate(db, cfg.General.Database.Migrations)
+			err := database.Migrate(db, cfg.Database.Migrations)
 			if err != nil {
 				panic(err)
 			}

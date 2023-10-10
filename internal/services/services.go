@@ -24,3 +24,10 @@ type AccessControlService interface {
 	Enforce(ctx context.Context, resource string, action string) models.Notifier
 	Invalidate(ctx context.Context, id string)
 }
+
+type SessionService interface {
+	Create(ctx context.Context, data *models.SessionData) string
+	Find(ctx context.Context, id string, data *models.SessionData) models.Notifier
+	UpdateCsrf(ctx context.Context, id, csrfToken string) models.Notifier
+	Destroy(ctx context.Context, id string)
+}

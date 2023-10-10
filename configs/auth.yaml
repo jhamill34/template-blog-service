@@ -1,3 +1,31 @@
+server:
+  port: 3334
+  idle_timeout: 60s
+  read_timeout: 1s
+  write_timeout: 2s
+
+cache:
+  address: auth-redis-store:6379
+  password: password
+
+pubsub:
+  address: pubsub:6379
+  password: password
+
+database:
+  path: "auth-user:password@tcp(auth-mysql)/auth-db?parseTime=true&multiStatements=true"
+  migrations:
+    - "./migrations/auth/*.sql"
+
+notifications:
+  timeout: 1s
+
+template:
+  common: 
+    - "./templates/auth/components/*.html"
+  paths:
+    - "./templates/auth/pages/*.html"
+
 default_user:
   email: "joshrasmussen34@gmail.com"
   password: "password"
@@ -28,34 +56,4 @@ session:
 
   # TODO: Environment Variable?
   key: SESSIONSECRET
-
-general:
-  server:
-    port: 3334
-    idle_timeout: 60s
-    read_timeout: 1s
-    write_timeout: 2s
-
-  cache:
-    address: auth-redis-store:6379
-    password: password
-
-  pubsub:
-    address: pubsub:6379
-    password: password
-
-  database:
-    path: "auth-user:password@tcp(auth-mysql)/auth-db?parseTime=true&multiStatements=true"
-    migrations:
-      - "./migrations/auth/*.sql"
-
-  notifications:
-    timeout: 1s
-  
-  template:
-    common: 
-      - "./templates/auth/components/*.html"
-    paths:
-      - "./templates/auth/pages/*.html"
-
 

@@ -2,15 +2,6 @@ package config
 
 import "time"
 
-type Configuration struct {
-	Server        ServerConfig        `yaml:"server"`
-	Database      DatabaseConfig      `yaml:"database"`
-	Template      TemplateConfig      `yaml:"template"`
-	PubSub        RedisConfig		  `yaml:"pubsub"`
-	Cache		  RedisConfig         `yaml:"cache"`
-	Notifications NotificationsConfig `yaml:"notifications"`
-}
-
 type NotificationsConfig struct {
 	Timeout time.Duration `yaml:"timeout"`
 }
@@ -35,4 +26,10 @@ type RedisConfig struct {
 type TemplateConfig struct {
 	Common []string `yaml:"common"`
 	Paths  []string `yaml:"paths"`
+}
+
+type SessionConfig struct {
+	TTL        time.Duration `yaml:"ttl"`
+	CookieTTL  time.Duration `yaml:"cookie_ttl"`
+	SigningKey []byte        `yaml:"signing_key"`
 }

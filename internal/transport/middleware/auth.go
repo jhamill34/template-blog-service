@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -35,7 +36,7 @@ func (m *AuthorizeMiddleware) AuthorizeMiddleware(next http.Handler) http.Handle
 			return
 		}
 
-		var sessionData models.SessionData
+		var sessionData models.SessionData 
 		sessionId := cookie.Value
 		sessionErr := m.sessionService.Find(r.Context(), sessionId, &sessionData)
 		if sessionErr != nil {
@@ -44,7 +45,19 @@ func (m *AuthorizeMiddleware) AuthorizeMiddleware(next http.Handler) http.Handle
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), "user", &sessionData)
+		log.Println(sessionData)
+
+		ctx := r.Context()
+		switch sessionData.Type {
+		case "user":
+			ctx = context.WithValue(ctx, "user_id", sessionData.Payload)
+		case "token":
+			ctx = context.WithValue(ctx, "token", sessionData.Payload)
+		}
+
+		ctx = context.WithValue(ctx, "session_id", sessionId)
+		ctx = context.WithValue(ctx, "csrf_token", sessionData.CsrfToken)
+
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -61,7 +74,8 @@ func NewTokenAuthMiddleware(signer services.Signer) func(http.Handler) http.Hand
 
 func (m *TokenAuthMiddleware) AuthorizeMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Context().Value("user") != nil {
+		userId, ok := r.Context().Value("user_id").(string)
+		if ok && userId != "" {
 			next.ServeHTTP(w, r)
 			return 
 		}
@@ -117,26 +131,17 @@ func (m *TokenAuthMiddleware) AuthorizeMiddleware(next http.Handler) http.Handle
 			return
 		}
 
-		var sessionData models.SessionData
-		sessionData = models.SessionData{
-			SessionId: "",
-			UserId:    claims.Sub,
-			Name:      "",
-			Email:     "",
-			CsrfToken: "",
-		}
 
-		ctx := context.WithValue(r.Context(), "user", &sessionData)
-		ctx = context.WithValue(ctx, "token", token)
+		ctx := context.WithValue(r.Context(), "user_id", claims.Sub)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
 func UnauthorizedMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user := r.Context().Value("user")
+		user, ok := r.Context().Value("user_id").(string)
 
-		if user == nil {
+		if !ok || user == "" {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
@@ -147,9 +152,9 @@ func UnauthorizedMiddleware(next http.Handler) http.Handler {
 
 func RedirectToLoginMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user := r.Context().Value("user")
+		user, ok := r.Context().Value("user_id").(string)
 
-		if user == nil {
+		if !ok || user == "" {
 			http.SetCookie(w, utils.ReturnToPostLoginCookie(r.URL.String(), 5*time.Minute))
 			http.Redirect(w, r, "/auth/login", http.StatusFound)
 			return
@@ -161,9 +166,9 @@ func RedirectToLoginMiddleware(next http.Handler) http.Handler {
 
 func RedirectToHomeMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user := r.Context().Value("user")
+		user, ok := r.Context().Value("user_id").(string)
 
-		if user != nil {
+		if ok && user != "" {
 			http.Redirect(w, r, "/auth", http.StatusFound)
 			return
 		}

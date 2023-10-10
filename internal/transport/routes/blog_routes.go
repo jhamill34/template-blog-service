@@ -2,35 +2,26 @@ package routes
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/jhamill34/notion-provisioner/internal/config"
-	"github.com/jhamill34/notion-provisioner/internal/models"
 	"github.com/jhamill34/notion-provisioner/internal/services"
 	"github.com/jhamill34/notion-provisioner/internal/transport/middleware"
 	"github.com/jhamill34/notion-provisioner/internal/transport/utils"
 )
 
 type BlogRoutes struct {
-	postService        services.BlogPostService
-	templateService    services.TemplateService
-	notificationConfig config.NotificationsConfig
-	signer             services.Signer
+	postService services.BlogPostService
+	signer      services.Signer
 }
 
 func NewBlogRoutes(
 	postService services.BlogPostService,
-	templateService services.TemplateService,
-	notificationConfig config.NotificationsConfig,
 	signer services.Signer,
 ) *BlogRoutes {
 	return &BlogRoutes{
-		postService:        postService,
-		templateService:    templateService,
-		notificationConfig: notificationConfig,
-		signer:             signer,
+		postService: postService,
+		signer:      signer,
 	}
 }
 
@@ -38,7 +29,6 @@ func NewBlogRoutes(
 func (self *BlogRoutes) Routes() (string, http.Handler) {
 	router := chi.NewRouter()
 
-	router.Get("/", self.Index())
 	router.Get("/blog", self.ListPosts())
 	router.Get("/blog/{id}", self.GetPost())
 
@@ -53,34 +43,20 @@ func (self *BlogRoutes) Routes() (string, http.Handler) {
 	return "/", router
 }
 
-func (self *BlogRoutes) Index() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		self.templateService.Render(w, "index.html", "layout", models.NewTemplateEmpty())
-	}
-}
-
 func (self *BlogRoutes) GetPost() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")
 		post, err := self.postService.GetPost(r.Context(), id)
-		if err != nil {
-			utils.SetNotifications(
-				w,
-				err,
-				"/blog",
-				self.notificationConfig.Timeout,
-			)
-			http.Redirect(w, r, "/blog", http.StatusFound)
+		if err == services.PostNotFound {
+			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 
-		log.Println(post)
+		if err != nil {
+			panic(err)
+		}
 
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		self.templateService.Render(w, "blog_detail.html", "layout", models.NewTemplateData(post))
+		utils.RenderJSON(w, post, http.StatusOK)
 	}
 }
 
@@ -88,9 +64,7 @@ func (self *BlogRoutes) ListPosts() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		posts := self.postService.ListPosts(r.Context())
 
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		self.templateService.Render(w, "blog_list.html", "layout", models.NewTemplateData(posts))
+		utils.RenderJSON(w, posts, http.StatusOK)
 	}
 }
 
@@ -101,7 +75,7 @@ type PostPayload struct {
 
 func (self *BlogRoutes) CreatePost() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		user := r.Context().Value("user").(*models.SessionData)
+		userId := r.Context().Value("user_id").(string)
 
 		var payload PostPayload
 		if r.Header.Get("Content-Type") == "application/json" {
@@ -120,12 +94,12 @@ func (self *BlogRoutes) CreatePost() http.HandlerFunc {
 			r.Context(),
 			payload.Title,
 			payload.Content,
-			user.UserId,
+			userId,
 		)
 		if err == services.AccessDenied {
 			w.WriteHeader(http.StatusForbidden)
-			return	
-		} 
+			return
+		}
 
 		if err != nil {
 			panic(err)
@@ -160,8 +134,8 @@ func (self *BlogRoutes) UpdatePost() http.HandlerFunc {
 		)
 		if err == services.AccessDenied {
 			w.WriteHeader(http.StatusForbidden)
-			return	
-		} 
+			return
+		}
 
 		if err != nil {
 			panic(err)
@@ -178,12 +152,12 @@ func (self *BlogRoutes) DeletePost() http.HandlerFunc {
 		err := self.postService.DeletePost(r.Context(), id)
 		if err == services.AccessDenied {
 			w.WriteHeader(http.StatusForbidden)
-			return	
+			return
 		}
 
 		if err != nil {
 			panic(err)
-		}	
+		}
 
 		w.WriteHeader(http.StatusNoContent)
 	}

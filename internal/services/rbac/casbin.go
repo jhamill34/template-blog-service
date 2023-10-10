@@ -106,15 +106,14 @@ func (self *CasbinAccessControl) Enforce(
 	resource string,
 	action string,
 ) models.Notifier {
-	user := ctx.Value("user").(*models.SessionData)
+	userId, ok := ctx.Value("user_id").(string)
 
-	principle := fmt.Sprintf("u_%s", user.UserId)
-
-	enforcer := self.getEnforcer(ctx, user.UserId)
-
-	if user == nil {
+	if !ok || userId == "" { 
 		return services.AccessDenied
 	}
+ 	
+	principle := fmt.Sprintf("u_%s", userId)
+	enforcer := self.getEnforcer(ctx, userId)
 
 	ok, err := enforcer.Enforce(principle, resource, action)
 	if err != nil {
