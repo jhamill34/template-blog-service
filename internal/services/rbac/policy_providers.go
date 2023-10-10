@@ -56,14 +56,14 @@ func (self *RemotePolicyProvider) GetPolicies(
 	ctx context.Context,
 	id string,
 ) (models.PolicyResponse, error) {
-	token := ctx.Value("token").(string)
+	tokenData := ctx.Value("raw_token").(string)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", self.remotePolicyProviderUrl, nil)
 	if err != nil {
 		return models.PolicyResponse{}, err
 	}
 
-	req.Header.Add("Authorization", "Bearer "+token)
+	req.Header.Add("Authorization", "Bearer "+tokenData)
 
 	res, err := self.httpClient.Do(req)
 	if err != nil {

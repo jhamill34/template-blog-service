@@ -7,10 +7,11 @@ import (
 )
 
 type AppConfig struct {
-	Server        ServerConfig        `yaml:"server"`
-	Database      DatabaseConfig      `yaml:"database"`
-	PubSub        RedisConfig		  `yaml:"pubsub"`
-	Cache		  RedisConfig         `yaml:"cache"`
+	Server     ServerConfig   `yaml:"server"`
+	Database   DatabaseConfig `yaml:"database"`
+	PubSub     RedisConfig    `yaml:"pubsub"`
+	Cache      RedisConfig    `yaml:"cache"`
+	AuthServer string         `yaml:"auth_server"`
 }
 
 func LoadAppConfig(filename string) (AppConfig, error) {

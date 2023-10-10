@@ -26,13 +26,14 @@ func (self *StaticPublicKeyProvider) GetKey() *rsa.PublicKey {
 //==================================================
 
 type RemotePublicKeyProvider struct {
+	httpClient   *http.Client
 	publicKeyUrl string
 	publicKey    *rsa.PublicKey
 	nextFetch    int64
 }
 
-func NewRemotePublicKeyProvider(publicKeyUrl string) *RemotePublicKeyProvider {
-	return &RemotePublicKeyProvider{publicKeyUrl, nil, 0}
+func NewRemotePublicKeyProvider(httpClient *http.Client, publicKeyUrl string) *RemotePublicKeyProvider {
+	return &RemotePublicKeyProvider{httpClient, publicKeyUrl, nil, 0}
 }
 
 func (self *RemotePublicKeyProvider) GetKey() *rsa.PublicKey {
@@ -45,7 +46,7 @@ func (self *RemotePublicKeyProvider) GetKey() *rsa.PublicKey {
 
 func (self *RemotePublicKeyProvider) fetchPublicKey() {
 	var publicKeyResponse models.PublicKeyResponse
-	resp, err := http.Get(self.publicKeyUrl)
+	resp, err := self.httpClient.Get(self.publicKeyUrl)
 	if err != nil {
 		panic(err)
 	}

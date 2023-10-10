@@ -28,7 +28,8 @@ func ConfigureApp() *App {
 	}
 
 	publicKeyProvider := rca_signer.NewRemotePublicKeyProvider(
-		"http://auth-service:3334/key/signer",
+		http.DefaultClient,
+		cfg.AuthServer+"/key/signer",
 	)
 	signer := rca_signer.NewRcaSigner(publicKeyProvider, nil)
 

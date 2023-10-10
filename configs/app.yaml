@@ -12,6 +12,8 @@ pubsub:
   address: pubsub:6379
   password: password
 
+auth_server: http://auth-service:3334
+
 database:
   path: "app-user:password@tcp(app-mysql)/app-db?parseTime=true&multiStatements=true"
   migrations:

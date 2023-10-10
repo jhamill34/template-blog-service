@@ -11,12 +11,20 @@ cache:
 session:
   ttl: 3600s 
   cookie_ttl: 86400s 
-
-  # TODO: Environment Variable?
   key: SESSIONSECRET
 
 notifications:
   timeout: 1s
+
+external_auth_server: http://localhost:3334
+auth_server: http://auth-service:3334
+app_server: app-service:3333
+
+oauth:
+  client_id: "bf6e1cba-c2a4-4348-98c7-c044f9445461"
+  client_secret: "f86f01bb-c4c6-428d-b743-bd5f885c0925"
+  authorize_uri: /oauth/authorize
+  token_uri: /oauth/token
 
 template:
   common: 

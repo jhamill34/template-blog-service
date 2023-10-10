@@ -38,6 +38,10 @@ type Notification struct {
 	Message string `json:"message"`
 }
 
+func (self *Notification) Notify() *Notification {
+	return self
+}
+
 type SessionData struct {
 	Payload   string `json:"payload"`
 	Type      string `json:"type"`

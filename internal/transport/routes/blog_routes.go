@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jhamill34/notion-provisioner/internal/models"
 	"github.com/jhamill34/notion-provisioner/internal/services"
 	"github.com/jhamill34/notion-provisioner/internal/transport/middleware"
 	"github.com/jhamill34/notion-provisioner/internal/transport/utils"
@@ -48,7 +49,11 @@ func (self *BlogRoutes) GetPost() http.HandlerFunc {
 		id := chi.URLParam(r, "id")
 		post, err := self.postService.GetPost(r.Context(), id)
 		if err == services.PostNotFound {
-			w.WriteHeader(http.StatusNotFound)
+			utils.RenderJSON(
+				w,
+				models.ForwardError{Message: "Post Not Found"},
+				http.StatusNotFound,
+			)
 			return
 		}
 
@@ -80,7 +85,11 @@ func (self *BlogRoutes) CreatePost() http.HandlerFunc {
 		var payload PostPayload
 		if r.Header.Get("Content-Type") == "application/json" {
 			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-				w.WriteHeader(http.StatusBadRequest)
+				utils.RenderJSON(
+					w,
+					models.ForwardError{Message: "Bad Request"},
+					http.StatusBadRequest,
+				)
 				return
 			}
 		} else {
@@ -97,7 +106,11 @@ func (self *BlogRoutes) CreatePost() http.HandlerFunc {
 			userId,
 		)
 		if err == services.AccessDenied {
-			w.WriteHeader(http.StatusForbidden)
+			utils.RenderJSON(
+				w,
+				models.ForwardError{Message: "Access denied"},
+				http.StatusForbidden,
+			)
 			return
 		}
 
@@ -116,7 +129,11 @@ func (self *BlogRoutes) UpdatePost() http.HandlerFunc {
 		var payload PostPayload
 		if r.Header.Get("Content-Type") == "application/json" {
 			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-				w.WriteHeader(http.StatusBadRequest)
+				utils.RenderJSON(
+					w,
+					models.ForwardError{Message: "Bad Request"},
+					http.StatusBadRequest,
+				)
 				return
 			}
 		} else {
@@ -133,7 +150,11 @@ func (self *BlogRoutes) UpdatePost() http.HandlerFunc {
 			payload.Content,
 		)
 		if err == services.AccessDenied {
-			w.WriteHeader(http.StatusForbidden)
+			utils.RenderJSON(
+				w,
+				models.ForwardError{Message: "Access denied"},
+				http.StatusForbidden,
+			)
 			return
 		}
 
@@ -151,7 +172,11 @@ func (self *BlogRoutes) DeletePost() http.HandlerFunc {
 
 		err := self.postService.DeletePost(r.Context(), id)
 		if err == services.AccessDenied {
-			w.WriteHeader(http.StatusForbidden)
+			utils.RenderJSON(
+				w,
+				models.ForwardError{Message: "Access denied"},
+				http.StatusForbidden,
+			)
 			return
 		}
 

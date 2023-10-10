@@ -52,7 +52,9 @@ func (m *AuthorizeMiddleware) AuthorizeMiddleware(next http.Handler) http.Handle
 		case "user":
 			ctx = context.WithValue(ctx, "user_id", sessionData.Payload)
 		case "token":
-			ctx = context.WithValue(ctx, "token", sessionData.Payload)
+			var tokenData models.AccessTokenResponse
+			json.Unmarshal([]byte(sessionData.Payload), &tokenData)
+			ctx = context.WithValue(ctx, "token", &tokenData)
 		}
 
 		ctx = context.WithValue(ctx, "session_id", sessionId)
@@ -133,6 +135,7 @@ func (m *TokenAuthMiddleware) AuthorizeMiddleware(next http.Handler) http.Handle
 
 
 		ctx := context.WithValue(r.Context(), "user_id", claims.Sub)
+		ctx = context.WithValue(ctx, "raw_token", token)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -143,6 +146,19 @@ func UnauthorizedMiddleware(next http.Handler) http.Handler {
 
 		if !ok || user == "" {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func RedirectToIndexMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		token := r.Context().Value("token")
+
+		if token == nil {
+			http.Redirect(w, r, "/", http.StatusFound)
 			return
 		}
 
