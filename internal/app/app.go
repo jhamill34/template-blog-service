@@ -44,7 +44,7 @@ func ConfigureApp() *App {
 		permissionModel,
 		policyStore,
 		nil,
-		rbac.NewRemotePolicyProvider("http://auth-service:3334/policy", http.DefaultClient),
+		rbac.NewRemotePolicyProvider(cfg.AuthServer+"/policy", http.DefaultClient),
 	)
 
 	subscriber := redis.NewClient(&redis.Options{

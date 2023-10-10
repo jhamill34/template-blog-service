@@ -1,11 +1,11 @@
 server:
-  port: 3334
+  port: 80
   idle_timeout: 60s
   read_timeout: 1s
   write_timeout: 2s
 
 cache:
-  address: auth-redis-store:6379
+  address: auth_redis_store:6379
   password: password
 
 pubsub:
@@ -13,7 +13,7 @@ pubsub:
   password: password
 
 database:
-  path: "auth-user:password@tcp(auth-mysql)/auth-db?parseTime=true&multiStatements=true"
+  path: "auth-user:password@tcp(auth_mysql)/auth-db?parseTime=true&multiStatements=true"
   migrations:
     - "./migrations/auth/*.sql"
 

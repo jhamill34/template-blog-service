@@ -1,11 +1,11 @@
 server:
-  port: 3332
+  port: 80
   idle_timeout: 60s
   read_timeout: 1s
   write_timeout: 2s
 
 cache:
-  address: app-redis-store:6379
+  address: app_redis_store:6379
   password: password
 
 session:
@@ -16,14 +16,14 @@ session:
 notifications:
   timeout: 1s
 
-external_auth_server: http://localhost:3334
-auth_server: http://auth-service:3334
-app_server: app-service:3333
-base_url: http://localhost:3332
+external_auth_server: https://auth.spedue.com
+auth_server: http://auth_service
+app_server: app_service
+base_url: https://app.spedue.com
 
 oauth:
-  client_id: "bf6e1cba-c2a4-4348-98c7-c044f9445461"
-  client_secret: "f86f01bb-c4c6-428d-b743-bd5f885c0925"
+  client_id: "efae5523-7585-4eae-8f4d-97897e0626f4"
+  client_secret: "965963cf-752d-4f0a-84ea-affba4e55d61"
   authorize_uri: /oauth/authorize
   token_uri: /oauth/token
 

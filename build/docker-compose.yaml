@@ -1,41 +1,68 @@
 version: '3'
 
 services:
-  gateway-service:
+  nginx:
+    image: nginx:latest
+    container_name: nginx_reverse_proxy
+    ports:
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./_wildcard.spedue.com.pem:/certs/spedue.com.pem
+      - ./_wildcard.spedue.com-key.pem:/certs/spedue.com-key.pem
+    networks:
+      - main
+
+  gateway_service:
+    container_name: gateway_service
     build:
       context: ../
       dockerfile: build/gateway/Dockerfile
-    ports:
-      - 3332:3332
     networks:
       - main
     volumes:
       - ../:/app
     depends_on:
-      app-redis-store:
+      app_redis_store:
         condition: service_healthy
 
-  app-service:
+  app_service:
+    container_name: app_service
     build:
       context: ../
       dockerfile: build/app/Dockerfile
-    ports:
-      - 3333:3333
     networks:
       - main
     volumes:
       - ../:/app
     depends_on:
-      app-mysql:
+      app_mysql:
         condition: service_healthy
-      app-redis-store:
+      app_redis_store:
+        condition: service_healthy
+      pubsub:
+        condition: service_healthy
+  
+  auth_service:
+    container_name: auth_service
+    build:
+      context: ../
+      dockerfile: build/auth/Dockerfile
+    networks:
+      - main
+    volumes:
+      - ../:/app
+    depends_on:
+      auth_mysql:
+        condition: service_healthy
+      auth_redis_store:
         condition: service_healthy
       pubsub:
         condition: service_healthy
 
-  app-mysql:
+  app_mysql:
     image: mysql:latest
-    container_name: app-mysql
+    container_name: app_mysql
     environment:
       MYSQL_ROOT_PASSWORD: root-password
       MYSQL_DATABASE: app-db
@@ -46,48 +73,15 @@ services:
     networks:
       - main
     volumes:
-      - app-mysql-data:/var/lib/mysql
+      - app_mysql_data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
       timeout: 10s
       retries: 10
 
-  app-redis-store:
-    image: redis:latest
-    container_name: app-redis-store
-    environment:
-      - REDIS_PASSWORD=password
-    ports:
-      - "6383:6379"
-    networks:
-      - main
-    volumes:
-      - app-redis-data:/data
-    command: /bin/sh -c 'redis-server --appendonly yes --requirepass $${REDIS_PASSWORD}'
-    healthcheck:
-      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
-
-  auth-service:
-    build:
-      context: ../
-      dockerfile: build/auth/Dockerfile
-    ports:
-      - 3334:3334
-    networks:
-      - main
-    volumes:
-      - ../:/app
-    depends_on:
-      auth-mysql:
-        condition: service_healthy
-      auth-redis-store:
-        condition: service_healthy
-      pubsub:
-        condition: service_healthy
-
-  auth-mysql:
+  auth_mysql:
     image: mysql:latest
-    container_name: auth-mysql
+    container_name: auth_mysql
     environment:
       MYSQL_ROOT_PASSWORD: root-password
       MYSQL_DATABASE: auth-db
@@ -98,15 +92,31 @@ services:
     networks:
       - main
     volumes:
-      - auth-mysql-data:/var/lib/mysql
+      - auth_mysql_data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
       timeout: 10s
       retries: 10
-
-  auth-redis-store:
+  
+  app_redis_store:
     image: redis:latest
-    container_name: auth-redis-store
+    container_name: app_redis_store
+    environment:
+      - REDIS_PASSWORD=password
+    ports:
+      - "6383:6379"
+    networks:
+      - main
+    volumes:
+      - app_redis_data:/data
+    command: /bin/sh -c 'redis-server --appendonly yes --requirepass $${REDIS_PASSWORD}'
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+
+
+  auth_redis_store:
+    image: redis:latest
+    container_name: auth_redis_store
     environment:
       - REDIS_PASSWORD=password
     ports:
@@ -114,7 +124,7 @@ services:
     networks:
       - main
     volumes:
-      - auth-redis-data:/data
+      - auth_redis_data:/data
     command: /bin/sh -c 'redis-server --appendonly yes --requirepass $${REDIS_PASSWORD}'
     healthcheck:
       test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
@@ -129,17 +139,17 @@ services:
     networks:
       - main
     volumes:
-      - pubsub-data:/data
+      - pubsub_data:/data
     command: /bin/sh -c 'redis-server --appendonly yes --requirepass $${REDIS_PASSWORD}'
     healthcheck:
       test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
 
 volumes:
-  auth-mysql-data:
-  auth-redis-data:
-  app-mysql-data:
-  app-redis-data:
-  pubsub-data:
+  auth_mysql_data:
+  auth_redis_data:
+  app_mysql_data:
+  app_redis_data:
+  pubsub_data:
 
 networks:
   main:
