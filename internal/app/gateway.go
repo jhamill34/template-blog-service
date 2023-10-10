@@ -50,6 +50,7 @@ func ConfigureGateway() *Gateway {
 				cfg.ExternalAuthServer,
 				cfg.AppServer,
 				cfg.Notifications,
+				cfg.BaseUrl,
 			),
 		),
 	}

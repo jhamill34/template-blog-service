@@ -16,6 +16,7 @@ type GatewayConfig struct {
 	AuthServer         string              `yaml:"auth_server"`
 	ExternalAuthServer string              `yaml:"external_auth_server"`
 	AppServer          string              `yaml:"app_server"`
+	BaseUrl            string              `yaml:"base_url"`
 }
 
 type OauthConfig struct {

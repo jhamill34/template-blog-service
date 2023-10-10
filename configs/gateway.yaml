@@ -19,6 +19,7 @@ notifications:
 external_auth_server: http://localhost:3334
 auth_server: http://auth-service:3334
 app_server: app-service:3333
+base_url: http://localhost:3332
 
 oauth:
   client_id: "bf6e1cba-c2a4-4348-98c7-c044f9445461"

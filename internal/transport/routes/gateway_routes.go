@@ -27,6 +27,7 @@ type GatewayRoutes struct {
 	externalAuthServer string
 	appServer          string
 	notificationConfig config.NotificationsConfig
+	baseUrl            string
 }
 
 func NewGatewayRoutes(
@@ -39,6 +40,7 @@ func NewGatewayRoutes(
 	externalAuthServer string,
 	appServer string,
 	notificationConfig config.NotificationsConfig,
+	baseUrl string,
 ) *GatewayRoutes {
 	return &GatewayRoutes{
 		sessionService:     sessionService,
@@ -50,6 +52,7 @@ func NewGatewayRoutes(
 		externalAuthServer: externalAuthServer,
 		appServer:          appServer,
 		notificationConfig: notificationConfig,
+		baseUrl:            baseUrl,
 	}
 }
 
@@ -295,7 +298,6 @@ func (self *GatewayRoutes) ProcessDeletePost() http.HandlerFunc {
 			return
 		}
 
-
 		sessionId := r.Context().Value("session_id").(string)
 		self.sessionService.UpdateCsrf(r.Context(), sessionId, uuid.New().String())
 
@@ -380,7 +382,7 @@ func (self *GatewayRoutes) Authorize() http.HandlerFunc {
 		data := url.Values{}
 		data.Set("response_type", "code")
 		data.Set("client_id", self.oauthConfig.ClientID)
-		data.Set("redirect_uri", "http://localhost:3332/oauth/callback")
+		data.Set("redirect_uri", self.baseUrl+"/oauth/callback")
 		data.Set("state", "testing")
 		endpoint.RawQuery = data.Encode()
 
@@ -397,7 +399,7 @@ func (self *GatewayRoutes) Callback() http.HandlerFunc {
 		data := url.Values{}
 		data.Set("grant_type", "authorization_code")
 		data.Set("code", code)
-		data.Set("redirect_uri", "http://localhost:3332/oauth/callback")
+		data.Set("redirect_uri", self.baseUrl+"/oauth/callback")
 		data.Set("client_id", self.oauthConfig.ClientID)
 		data.Set("client_secret", self.oauthConfig.ClientSecret)
 
