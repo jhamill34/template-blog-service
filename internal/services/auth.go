@@ -42,8 +42,8 @@ type UserService interface {
 type ApplicationService interface {
 	CreateApp(
 		ctx context.Context,
-		redirectUri, name, description string,
-	) (*models.App, string, models.Notifier)
+		clientId, clientSecret, redirectUri, name, description string,
+	) (*models.App, models.Notifier)
 	GetApp(ctx context.Context, id string) (*models.App, models.Notifier)
 	GetAppByClientId(ctx context.Context, clientId string) (*models.App, models.Notifier)
 	DeleteApp(ctx context.Context, id string) models.Notifier

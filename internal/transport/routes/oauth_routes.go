@@ -100,8 +100,12 @@ func (self *OauthRoutes) ProcessCreateApplication() http.HandlerFunc {
 			return
 		}
 
-		_, clientSecret, err := self.appService.CreateApp(
+		clientId := uuid.New().String()
+		clientSecret := uuid.New().String()
+		_, err := self.appService.CreateApp(
 			r.Context(),
+			clientId,
+			clientSecret,
 			redirectUri,
 			name,
 			description,

@@ -9,6 +9,7 @@ import (
 
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/model"
+	"github.com/jhamill34/notion-provisioner/internal/database"
 	"github.com/jhamill34/notion-provisioner/internal/models"
 	"github.com/jhamill34/notion-provisioner/internal/services"
 	"github.com/redis/go-redis/v9"
@@ -22,20 +23,20 @@ type PolicyProvider interface {
 
 type CasbinAccessControl struct {
 	model          string
-	redisClient    *redis.Client
-	publisher      *redis.Client
+	keyValueStore  database.KeyValueStoreProvider
+	publisher      database.PublisherProvider
 	policyProvider PolicyProvider
 }
 
 func NewCasbinAccessControl(
 	modelDef string,
-	redisClient *redis.Client,
-	publisher *redis.Client,
+	keyValueStore database.KeyValueStoreProvider,
+	publisher database.PublisherProvider,
 	poliPolicyProvider PolicyProvider,
 ) *CasbinAccessControl {
 	return &CasbinAccessControl{
 		model:          modelDef,
-		redisClient:    redisClient,
+		keyValueStore:  keyValueStore,
 		publisher:      publisher,
 		policyProvider: poliPolicyProvider,
 	}
@@ -44,7 +45,7 @@ func NewCasbinAccessControl(
 func (self *CasbinAccessControl) getEnforcer(ctx context.Context, id string) *casbin.Enforcer {
 	var p models.PolicyResponse
 
-	result, err := self.redisClient.Get(ctx, PREFIX+id).Result()
+	result, err := self.keyValueStore.Get().Get(ctx, PREFIX+id)
 	if err == redis.Nil {
 		p, err = self.policyProvider.GetPolicies(ctx, id)
 		if err != nil {
@@ -57,7 +58,7 @@ func (self *CasbinAccessControl) getEnforcer(ctx context.Context, id string) *ca
 		}
 
 		value := base64.StdEncoding.EncodeToString(valBytes)
-		err = self.redisClient.Set(ctx, PREFIX+id, value, 5*time.Minute).Err()
+		err = self.keyValueStore.Get().Set(ctx, PREFIX+id, value, 5*time.Minute)
 		if err != nil {
 			panic(err)
 		}
@@ -108,10 +109,10 @@ func (self *CasbinAccessControl) Enforce(
 ) models.Notifier {
 	userId, ok := ctx.Value("user_id").(string)
 
-	if !ok || userId == "" { 
+	if !ok || userId == "" {
 		return services.AccessDenied
 	}
- 	
+
 	principle := fmt.Sprintf("u_%s", userId)
 	enforcer := self.getEnforcer(ctx, userId)
 
@@ -128,10 +129,10 @@ func (self *CasbinAccessControl) Enforce(
 }
 
 func (self *CasbinAccessControl) Invalidate(ctx context.Context, id string) {
-	self.redisClient.Del(ctx, PREFIX+id)
-	
+	self.keyValueStore.Get().Del(ctx, PREFIX+id)
+
 	if self.publisher != nil {
-		self.publisher.Publish(ctx, "policy_invalidate", PREFIX+id)
+		self.publisher.Get().Publish(ctx, "policy_invalidate", PREFIX+id)
 	}
 }
 

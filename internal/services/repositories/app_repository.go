@@ -45,20 +45,27 @@ func NewApplicationRepository(
 // CreateApp implements services.ApplicationService.
 func (self *ApplicationRepository) CreateApp(
 	ctx context.Context,
-	redirectUri, name, description string,
-) (*models.App, string, models.Notifier) {
+	clientId, clientSecret, redirectUri, name, description string,
+) (*models.App, models.Notifier) {
 	if err := self.accessControlService.Enforce(ctx, "/oauth/application", "create"); err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
-	appId := uuid.New().String()
-	clientId := uuid.New().String()
-	clientSecret := uuid.New().String()
-
-	hashedClientSecret, err := createHash(self.passwordConfig, clientSecret)
+	app, err := self.saveApp(ctx, clientId, clientSecret, redirectUri, name, description)
 	if err != nil {
 		panic(err)
 	}
+
+	return app, nil
+}
+
+func (self *ApplicationRepository) saveApp(ctx context.Context, clientId, clientSecret, redirectUri, name, description string) (*models.App, error) {
+	hashedClientSecret, err := createHash(self.passwordConfig, clientSecret)
+	if err != nil {
+		return nil, err
+	}
+
+	appId := uuid.New().String()
 
 	app, err := self.appDao.Create(
 		ctx,
@@ -67,7 +74,7 @@ func (self *ApplicationRepository) CreateApp(
 	)
 
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	return &models.App{
@@ -76,7 +83,7 @@ func (self *ApplicationRepository) CreateApp(
 		RedirectUri: app.RedirectUri,
 		Name:        app.Name,
 		Description: app.Description,
-	}, clientSecret, nil
+	}, nil
 }
 
 // DeleteApp implements services.ApplicationService.

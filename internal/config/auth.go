@@ -12,6 +12,14 @@ type User struct {
 	Email    string `yaml:"email"`
 }
 
+type App struct {
+	ClientId     string `yaml:"client_id"`
+	ClientSecret string `yaml:"client_secret"`
+	RedirectUri  string `yaml:"redirect_uri"`
+	Name         string `yaml:"name"`
+	Description  string `yaml:"description"`
+}
+
 type HashParams struct {
 	Iterations  uint32 `yaml:"iterations"`
 	Parallelism uint8  `yaml:"parallelism"`
@@ -29,6 +37,7 @@ type AuthConfig struct {
 	Cache             RedisConfig              `yaml:"cache"`
 	Notifications     NotificationsConfig      `yaml:"notifications"`
 	DefaultUser       *User                    `yaml:"default_user"`
+	DefaultApp        *App                     `yaml:"default_app"`
 	PasswordConfig    *HashParams              `yaml:"password_config"`
 	Session           SessionConfig            `yaml:"session"`
 	VerifyTTL         time.Duration            `yaml:"verify_ttl"`

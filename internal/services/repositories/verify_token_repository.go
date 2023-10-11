@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jhamill34/notion-provisioner/internal/config"
+	"github.com/jhamill34/notion-provisioner/internal/database"
 	"github.com/jhamill34/notion-provisioner/internal/models"
 	"github.com/jhamill34/notion-provisioner/internal/services"
 	"github.com/redis/go-redis/v9"
@@ -27,20 +28,20 @@ const (
 )
 
 type HashedVerifyTokenRepository struct {
-	redisClient    *redis.Client
+	keyValueStore  database.KeyValueStoreProvider
 	ttl            time.Duration
 	prefix         VerificationType
 	passwordParams *config.HashParams
 }
 
 func NewHashedVerifyTokenRepository(
-	redisClient *redis.Client,
+	keyValueStore database.KeyValueStoreProvider,
 	ttl time.Duration,
 	prefix VerificationType,
 	passwordParams *config.HashParams,
 ) *HashedVerifyTokenRepository {
 	return &HashedVerifyTokenRepository{
-		redisClient:    redisClient,
+		keyValueStore:  keyValueStore,
 		ttl:            ttl,
 		prefix:         prefix,
 		passwordParams: passwordParams,
@@ -55,7 +56,7 @@ func (self *HashedVerifyTokenRepository) Create(
 	publicToken := uuid.New().String()
 	token, err := createHash(self.passwordParams, publicToken)
 
-	err = self.redisClient.Set(ctx, string(self.prefix)+id, token, self.ttl).Err()
+	err = self.keyValueStore.Get().Set(ctx, string(self.prefix)+id, token, self.ttl)
 	if err != nil {
 		panic(err)
 	}
@@ -68,7 +69,7 @@ func (self *HashedVerifyTokenRepository) Verify(
 	ctx context.Context,
 	id, token string,
 ) models.Notifier {
-	hashedToken, err := self.redisClient.Get(ctx, string(self.prefix)+id).Result()
+	hashedToken, err := self.keyValueStore.Get().Get(ctx, string(self.prefix)+id)
 	if err == redis.Nil {
 		return services.TokenNotFound
 	}
@@ -83,7 +84,7 @@ func (self *HashedVerifyTokenRepository) Verify(
 	}
 
 	if ok {
-		err = self.redisClient.Del(ctx, string(self.prefix)+id).Err()
+		err = self.keyValueStore.Get().Del(ctx, string(self.prefix)+id)
 		if err != nil {
 			panic(err)
 		}
@@ -122,7 +123,7 @@ func (self *HashedVerifyTokenRepository) CreateWithClaims(
 
 	output += "." + encodedSignaure
 
-	err = self.redisClient.Set(ctx, string(self.prefix)+id, output, self.ttl).Err()
+	err = self.keyValueStore.Get().Set(ctx, string(self.prefix)+id, output, self.ttl)
 	if err != nil {
 		panic(err)
 	}
@@ -137,7 +138,7 @@ func (self *HashedVerifyTokenRepository) VerifyWithClaims(
 	token string,
 	data interface{},
 ) models.Notifier {
-	hashedToken, err := self.redisClient.Get(ctx, string(self.prefix)+id).Result()
+	hashedToken, err := self.keyValueStore.Get().Get(ctx, string(self.prefix)+id)
 	if err == redis.Nil {
 		return services.TokenNotFound
 	}
@@ -189,7 +190,7 @@ func (self *HashedVerifyTokenRepository) VerifyWithClaims(
 }
 
 func (self *HashedVerifyTokenRepository) Destroy(ctx context.Context, id string) {
-	err := self.redisClient.Del(ctx, string(self.prefix)+id).Err()
+	err := self.keyValueStore.Get().Del(ctx, string(self.prefix)+id)
 	if err != nil {
 		panic(err)
 	}

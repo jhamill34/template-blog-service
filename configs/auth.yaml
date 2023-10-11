@@ -30,6 +30,13 @@ default_user:
   email: "joshrasmussen34@gmail.com"
   password: "password"
 
+default_app:
+  client_id: "efae5523-7585-4eae-8f4d-97897e0626f4"
+  client_secret: "965963cf-752d-4f0a-84ea-affba4e55d61"
+  name: "Default App"
+  description: "Used for app server"
+  redirect_uri: "https://app.spedue.com/oauth/callback"
+
 password_config:
   iterations: 3
   memory: 32768

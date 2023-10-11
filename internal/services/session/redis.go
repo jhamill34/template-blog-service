@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jhamill34/notion-provisioner/internal/database"
 	"github.com/jhamill34/notion-provisioner/internal/models"
 	"github.com/jhamill34/notion-provisioner/internal/services"
 	"github.com/redis/go-redis/v9"
@@ -19,26 +20,26 @@ import (
 
 const PREFIX = "session:"
 
-type RedisSessionStore struct {
-	redisClient *redis.Client
-	ttl         time.Duration
-	key         []byte
+type KeyValueSessionStore struct {
+	keyValueStore database.KeyValueStoreProvider
+	ttl           time.Duration
+	key           []byte
 }
 
 func NewRedisSessionStore(
-	redisClient *redis.Client,
+	keyValueStore database.KeyValueStoreProvider,
 	ttl time.Duration,
 	key []byte,
-) *RedisSessionStore {
-	return &RedisSessionStore{
-		redisClient: redisClient,
-		ttl:         ttl,
-		key:         key,
+) *KeyValueSessionStore {
+	return &KeyValueSessionStore{
+		keyValueStore: keyValueStore,
+		ttl:           ttl,
+		key:           key,
 	}
 }
 
 // Create implements services.SessionService.
-func (self *RedisSessionStore) Create(ctx context.Context, data *models.SessionData) string {
+func (self *KeyValueSessionStore) Create(ctx context.Context, data *models.SessionData) string {
 	var err error
 	id := uuid.New().String()
 	key := PREFIX + id
@@ -51,12 +52,12 @@ func (self *RedisSessionStore) Create(ctx context.Context, data *models.SessionD
 	signature := signData([]byte(payload), self.key)
 	value := fmt.Sprintf("%s.%s", payload, signature)
 
-	err = self.redisClient.Set(ctx, key, value, 0).Err()
+	err = self.keyValueStore.Get().Set(ctx, key, value, 0)
 	if err != nil {
 		panic(err)
 	}
 
-	err = self.redisClient.Expire(ctx, key, self.ttl).Err()
+	err = self.keyValueStore.Get().Expire(ctx, key, self.ttl)
 	if err != nil {
 		panic(err)
 	}
@@ -65,7 +66,7 @@ func (self *RedisSessionStore) Create(ctx context.Context, data *models.SessionD
 }
 
 // Find implements services.SessionService.
-func (self *RedisSessionStore) Find(
+func (self *KeyValueSessionStore) Find(
 	ctx context.Context,
 	id string,
 	result *models.SessionData,
@@ -73,7 +74,7 @@ func (self *RedisSessionStore) Find(
 	var err error
 	key := PREFIX + id
 
-	val, err := self.redisClient.Get(ctx, key).Result()
+	val, err := self.keyValueStore.Get().Get(ctx, key)
 	if err == redis.Nil {
 		return services.SessionNotFound
 	}
@@ -101,7 +102,7 @@ func (self *RedisSessionStore) Find(
 	b64Data = b64Data[:saltIndex]
 	decodeData(string(b64Data), result)
 
-	err = self.redisClient.Expire(ctx, key, self.ttl).Err()
+	err = self.keyValueStore.Get().Expire(ctx, key, self.ttl)
 	if err != nil {
 		panic(err)
 	}
@@ -109,14 +110,14 @@ func (self *RedisSessionStore) Find(
 	return nil
 }
 
-func (self *RedisSessionStore) UpdateCsrf(
+func (self *KeyValueSessionStore) UpdateCsrf(
 	ctx context.Context,
 	id, csrfToken string,
 ) models.Notifier {
 	var err error
 	key := PREFIX + id
 
-	val, err := self.redisClient.Get(ctx, key).Result()
+	val, err := self.keyValueStore.Get().Get(ctx, key)
 	if err == redis.Nil {
 		return services.SessionNotFound
 	}
@@ -149,12 +150,12 @@ func (self *RedisSessionStore) UpdateCsrf(
 	newSignature := signData([]byte(payload), self.key)
 	value := fmt.Sprintf("%s.%s", payload, newSignature)
 
-	err = self.redisClient.Set(ctx, key, value, 0).Err()
+	err = self.keyValueStore.Get().Set(ctx, key, value, 0)
 	if err != nil {
 		panic(err)
 	}
 
-	err = self.redisClient.Expire(ctx, key, self.ttl).Err()
+	err = self.keyValueStore.Get().Expire(ctx, key, self.ttl)
 	if err != nil {
 		panic(err)
 	}
@@ -163,8 +164,8 @@ func (self *RedisSessionStore) UpdateCsrf(
 }
 
 // Destroy implements services.SessionService.
-func (self *RedisSessionStore) Destroy(ctx context.Context, id string) {
-	err := self.redisClient.Del(ctx, PREFIX+id).Err()
+func (self *KeyValueSessionStore) Destroy(ctx context.Context, id string) {
+	err := self.keyValueStore.Get().Del(ctx, PREFIX+id)
 	if err != nil {
 		panic(err)
 	}

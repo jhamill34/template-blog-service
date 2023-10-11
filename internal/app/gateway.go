@@ -5,15 +5,16 @@ import (
 	"net/http"
 
 	"github.com/jhamill34/notion-provisioner/internal/config"
+	"github.com/jhamill34/notion-provisioner/internal/database"
 	"github.com/jhamill34/notion-provisioner/internal/services/repositories"
 	"github.com/jhamill34/notion-provisioner/internal/services/session"
 	"github.com/jhamill34/notion-provisioner/internal/transport"
 	"github.com/jhamill34/notion-provisioner/internal/transport/routes"
-	"github.com/redis/go-redis/v9"
 )
 
 type Gateway struct {
 	server transport.Server
+	cleanup func(ctx context.Context)
 }
 
 func ConfigureGateway() *Gateway {
@@ -26,19 +27,16 @@ func ConfigureGateway() *Gateway {
 		NewTemplateRepository(cfg.Template.Common...).
 		AddTemplates(cfg.Template.Paths...)
 
-	redisClient := redis.NewClient(&redis.Options{
-		Addr:     cfg.Cache.Addr,
-		Password: cfg.Cache.Password,
-	})
+	kv := database.NewRedisProvider("GATEWAY:", cfg.Cache.Addr, cfg.Cache.Password)
 
 	sessionStore := session.NewRedisSessionStore(
-		redisClient,
+		kv,
 		cfg.SessionConfig.TTL,
 		cfg.SessionConfig.SigningKey,
 	)
 
 	return &Gateway{
-		transport.NewServer(
+		server: transport.NewServer(
 			cfg.Server,
 			routes.NewGatewayRoutes(
 				sessionStore,
@@ -53,9 +51,14 @@ func ConfigureGateway() *Gateway {
 				cfg.BaseUrl,
 			),
 		),
+		cleanup: func(ctx context.Context) {
+			// kv.Close()
+		},
 	}
 }
 
 func (self *Gateway) Start(ctx context.Context) {
+	defer self.cleanup(ctx)
+
 	self.server.Start(ctx)
 }

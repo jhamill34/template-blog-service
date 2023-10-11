@@ -12,7 +12,6 @@ import (
 	"github.com/jhamill34/notion-provisioner/internal/services/repositories"
 	"github.com/jhamill34/notion-provisioner/internal/transport"
 	"github.com/jhamill34/notion-provisioner/internal/transport/routes"
-	"github.com/redis/go-redis/v9"
 )
 
 type App struct {
@@ -34,28 +33,23 @@ func ConfigureApp() *App {
 	signer := rca_signer.NewRcaSigner(publicKeyProvider, nil)
 
 	db := database.NewMySQLDbProvider(cfg.Database.Path)
-	policyStore := redis.NewClient(&redis.Options{
-		Addr:     cfg.Cache.Addr,
-		Password: cfg.Cache.Password,
-	})
+
+	kv := database.NewRedisProvider("APP:", cfg.Cache.Addr, cfg.Cache.Password)
 
 	permissionModel := config.LoadRbacModel("configs/rbac_model.conf")
 	accessControlService := rbac.NewCasbinAccessControl(
 		permissionModel,
-		policyStore,
+		kv,
 		nil,
 		rbac.NewRemotePolicyProvider(cfg.AuthServer+"/policy", http.DefaultClient),
 	)
 
-	subscriber := redis.NewClient(&redis.Options{
-		Addr:     cfg.PubSub.Addr,
-		Password: cfg.PubSub.Password,
-	})
-
 	postDao := dao.NewPostDao(db)
 	postService := repositories.NewPostRepository(postDao, accessControlService)
 
-	go listenForPolicyInvalidation(context.Background(), subscriber, policyStore)
+	subscriber := database.NewRedisSubscriberProvider(cfg.PubSub.Addr, cfg.PubSub.Password)
+
+	go listenForPolicyInvalidation(context.Background(), subscriber, kv)
 
 	return &App{
 		server: transport.NewServer(
@@ -67,9 +61,11 @@ func ConfigureApp() *App {
 		),
 		cleanup: func(_ context.Context) {
 			db.Close()
+			// kv.Close()
+			// subscriber.Close()
 		},
 		setup: func(ctx context.Context) {
-			err := database.Migrate(db, cfg.Database.Migrations)
+			err := database.Migrate(db, "APP", cfg.Database.Migrations)
 			if err != nil {
 				panic(err)
 			}
@@ -86,16 +82,16 @@ func (a *App) Start(ctx context.Context) {
 
 func listenForPolicyInvalidation(
 	ctx context.Context,
-	redisSubscriber *redis.Client,
-	policyStore *redis.Client,
+	subscriber database.SubscriberProvider,
+	policyStore database.KeyValueStoreProvider,
 ) {
-	subscriber := redisSubscriber.Subscribe(ctx, "policy_invalidate")
-	for {
-		msg, err := subscriber.ReceiveMessage(ctx)
-		if err != nil {
-			panic(err)
-		}
+	channel, err := subscriber.Get().Subscribe(ctx, "policy_invalidate")
+	if err != nil {
+		panic(err)
+	}
 
-		policyStore.Del(ctx, msg.Payload)
+	for {
+		msg := <-channel
+		policyStore.Get().Del(ctx, msg)
 	}
 }

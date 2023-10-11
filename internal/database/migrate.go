@@ -12,13 +12,13 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func Migrate(db DatabaseProvider, migrationGlobs []string) error {
+func Migrate(db DatabaseProvider, migrationKey string, migrationGlobs []string) error {
 	migrations := resolveMigrations(migrationGlobs)
 	if len(migrations) == 0 {
 		return nil
 	}
 
-	return runMigrations(db.Get(), migrations)
+	return runMigrations(db.Get(), migrationKey, migrations)
 }
 
 type migration struct {
@@ -57,7 +57,7 @@ func setupMigrations(db *sqlx.DB) error {
 
 	_, err = tx.Exec(`
 		CREATE TABLE IF NOT EXISTS migrations (
-			id		INTEGER PRIMARY KEY,
+			id		VARCHAR(32) PRIMARY KEY,
 			version TEXT
 		);
 	`)
@@ -70,12 +70,12 @@ func setupMigrations(db *sqlx.DB) error {
 	return tx.Commit()
 }
 
-func getCurrentMigration(db *sqlx.DB) (string, error) {
+func getCurrentMigration(db *sqlx.DB, migrationKey string) (string, error) {
 	var version string
-	row := db.QueryRowx("SELECT version FROM migrations WHERE id = 1")
+	row := db.QueryRowx("SELECT version FROM migrations WHERE id = ?", migrationKey)
 	err := row.Scan(&version)
 	if err == sql.ErrNoRows {
-		_, err = db.Exec(`INSERT INTO migrations (id, version) VALUES (1, "NA")`)
+		_, err = db.Exec(`INSERT INTO migrations (id, version) VALUES (?, "NA")`, migrationKey)
 		if err != nil {
 			return "", err
 		}
@@ -105,7 +105,7 @@ func findLastMigrationIndex(migrations []migration, version string) (int, error)
 	return -1, fmt.Errorf("Index not found for version %s", version)
 }
 
-func runMigrations(db *sqlx.DB, migrations []migration) error {
+func runMigrations(db *sqlx.DB, migrationKey string, migrations []migration) error {
 	var err error
 
 	// ensure migrations table exists
@@ -114,7 +114,7 @@ func runMigrations(db *sqlx.DB, migrations []migration) error {
 		return err
 	}
 
-	version, err := getCurrentMigration(db)
+	version, err := getCurrentMigration(db, migrationKey)
 	if err != nil {
 		return err
 	}
@@ -174,8 +174,9 @@ func runMigrations(db *sqlx.DB, migrations []migration) error {
 	lastSuccessful := i - 1
 	if lastSuccessful >= 0 {
 		_, err = db.Exec(
-			`UPDATE migrations SET version = ? WHERE id = 1`,
+			`UPDATE migrations SET version = ? WHERE id = ?`,
 			migrations[lastSuccessful].version,
+			migrationKey,
 		)
 	}
 

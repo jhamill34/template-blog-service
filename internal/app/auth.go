@@ -19,7 +19,6 @@ import (
 	"github.com/jhamill34/notion-provisioner/internal/services/session"
 	"github.com/jhamill34/notion-provisioner/internal/transport"
 	"github.com/jhamill34/notion-provisioner/internal/transport/routes"
-	"github.com/redis/go-redis/v9"
 )
 
 type Auth struct {
@@ -39,41 +38,37 @@ func ConfigureAuth() *Auth {
 	signer := rca_signer.NewRcaSigner(rca_signer.NewStaticPublicKeyProvider(publicKey), privateKey)
 
 	db := database.NewMySQLDbProvider(cfg.Database.Path)
+	kv := database.NewRedisProvider("AUTH:", cfg.Cache.Addr, cfg.Cache.Password)
 
 	templateRepository := repositories.
 		NewTemplateRepository(cfg.Template.Common...).
 		AddTemplates(cfg.Template.Paths...)
 
-	redisClient := redis.NewClient(&redis.Options{
-		Addr:     cfg.Cache.Addr,
-		Password: cfg.Cache.Password,
-	})
-
 	sessionStore := session.NewRedisSessionStore(
-		redisClient,
+		kv,
 		cfg.Session.TTL,
 		cfg.Session.SigningKey,
 	)
 	verifyTokenRepository := repositories.NewHashedVerifyTokenRepository(
-		redisClient,
+		kv,
 		cfg.VerifyTTL,
 		repositories.VerificationTypeRegistration,
 		cfg.PasswordConfig,
 	)
 	forgotPasswordTokenRepository := repositories.NewHashedVerifyTokenRepository(
-		redisClient,
+		kv,
 		cfg.PasswordForgotTTL,
 		repositories.VerificationTypeForgotPassword,
 		cfg.PasswordConfig,
 	)
 	inviteService := repositories.NewHashedVerifyTokenRepository(
-		redisClient,
+		kv,
 		cfg.InviteTTL,
 		repositories.VerificationTypeInvite,
 		cfg.PasswordConfig,
 	)
 	authCodeService := repositories.NewHashedVerifyTokenRepository(
-		redisClient,
+		kv,
 		cfg.AuthCodeTTL,
 		repositories.VerificationTypeAuthCode,
 		cfg.PasswordConfig,
@@ -93,17 +88,13 @@ func ConfigureAuth() *Auth {
 	)
 
 	appDao := dao.NewApplicationDao(db)
-	
-	subscriber := redis.NewClient(&redis.Options{
-		Addr:     cfg.PubSub.Addr,
-		Password: cfg.PubSub.Password,
-	})
 
+	publisher := database.NewRedisPublisherProvider(cfg.PubSub.Addr, cfg.PubSub.Password)
 	permissionModel := config.LoadRbacModel("configs/rbac_model.conf")
 	accessControlService := rbac.NewCasbinAccessControl(
 		permissionModel,
-		redisClient,
-		subscriber,
+		kv,
+		publisher,
 		rbac.NewDatabasePolicyProvider(userDao),
 	)
 
@@ -116,7 +107,6 @@ func ConfigureAuth() *Auth {
 		signer,
 		cfg.AccessToken,
 	)
-
 
 	return &Auth{
 		server: transport.NewServer(
@@ -152,9 +142,11 @@ func ConfigureAuth() *Auth {
 		),
 		cleanup: func(_ context.Context) {
 			db.Close()
+			// kv.Close()
+			// publisher.Close()
 		},
 		setup: func(ctx context.Context) {
-			err := database.Migrate(db, cfg.Database.Migrations)
+			err := database.Migrate(db, "AUTH", cfg.Database.Migrations)
 			if err != nil {
 				panic(err)
 			}
@@ -178,6 +170,29 @@ func ConfigureAuth() *Auth {
 
 			}
 
+			if cfg.DefaultApp != nil {
+				// Pretend to log in as root to do this action
+				newContext := context.WithValue(ctx, "user_id", "ROOT")
+
+				_, err := appService.GetAppByClientId(newContext, cfg.DefaultApp.ClientId)
+				if err == services.AppNotFound {
+					_, err = appService.CreateApp(
+						newContext,
+						cfg.DefaultApp.ClientId,
+						cfg.DefaultApp.ClientSecret,
+						cfg.DefaultApp.RedirectUri,
+						cfg.DefaultApp.Name,
+						cfg.DefaultApp.Description,
+					)
+					if err != nil {
+						panic(err)
+					}
+				}
+
+				if err != nil {
+					panic(err)
+				}
+			}
 		},
 	}
 }
