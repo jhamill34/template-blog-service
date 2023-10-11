@@ -5,11 +5,11 @@ server:
   write_timeout: 2s
 
 cache:
-  address: app_redis_store:6379
+  address: redis_store:6379
   password: password
 
 pubsub:
-  address: pubsub:6379
+  address: redis_store:6379
   password: password
 
 auth_server: http://auth_service

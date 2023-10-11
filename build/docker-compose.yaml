@@ -23,7 +23,7 @@ services:
     volumes:
       - ../:/app
     depends_on:
-      app_redis_store:
+      redis_store:
         condition: service_healthy
 
   app_service:
@@ -38,9 +38,7 @@ services:
     depends_on:
       app_mysql:
         condition: service_healthy
-      app_redis_store:
-        condition: service_healthy
-      pubsub:
+      redis_store:
         condition: service_healthy
   
   auth_service:
@@ -55,9 +53,7 @@ services:
     depends_on:
       auth_mysql:
         condition: service_healthy
-      auth_redis_store:
-        condition: service_healthy
-      pubsub:
+      redis_store:
         condition: service_healthy
 
   app_mysql:
@@ -98,9 +94,9 @@ services:
       timeout: 10s
       retries: 10
   
-  app_redis_store:
+  redis_store:
     image: redis:latest
-    container_name: app_redis_store
+    container_name: redis_store
     environment:
       - REDIS_PASSWORD=password
     ports:
@@ -108,48 +104,15 @@ services:
     networks:
       - main
     volumes:
-      - app_redis_data:/data
-    command: /bin/sh -c 'redis-server --appendonly yes --requirepass $${REDIS_PASSWORD}'
-    healthcheck:
-      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
-
-
-  auth_redis_store:
-    image: redis:latest
-    container_name: auth_redis_store
-    environment:
-      - REDIS_PASSWORD=password
-    ports:
-      - "6382:6379"
-    networks:
-      - main
-    volumes:
-      - auth_redis_data:/data
-    command: /bin/sh -c 'redis-server --appendonly yes --requirepass $${REDIS_PASSWORD}'
-    healthcheck:
-      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
-  
-  pubsub:
-    image: redis:latest
-    container_name: pubsub
-    environment:
-      - REDIS_PASSWORD=password
-    ports:
-      - "6384:6379"
-    networks:
-      - main
-    volumes:
-      - pubsub_data:/data
+      - redis_data:/data
     command: /bin/sh -c 'redis-server --appendonly yes --requirepass $${REDIS_PASSWORD}'
     healthcheck:
       test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
 
 volumes:
   auth_mysql_data:
-  auth_redis_data:
+  redis_data:
   app_mysql_data:
-  app_redis_data:
-  pubsub_data:
 
 networks:
   main:
