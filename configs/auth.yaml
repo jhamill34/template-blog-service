@@ -13,9 +13,7 @@ pubsub:
   password: password
 
 database:
-  path: "auth-user:password@tcp(auth_mysql)/auth-db?parseTime=true&multiStatements=true"
-  migrations:
-    - "./migrations/auth/*.sql"
+  path: "auth_user:auth_password@tcp(mysql_store)/datadb?parseTime=true&multiStatements=true"
 
 notifications:
   timeout: 1s

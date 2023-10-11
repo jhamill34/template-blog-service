@@ -32,3 +32,8 @@ create table if not exists role_user (
 	foreign key (role_id) references role(id),
 	foreign key (user_id) references user(id)
 );
+
+grant select, insert, update, delete on `datadb`.`role` to `auth_user`@`%`;
+grant select, insert, update, delete on `datadb`.`role_permission` to `auth_user`@`%`;
+grant select, insert, update, delete on `datadb`.`user_permission` to `auth_user`@`%`;
+grant select, insert, update, delete on `datadb`.`role_user` to `auth_user`@`%`;

@@ -10,3 +10,5 @@ create table if not exists user (
 
 create unique index idx_user_email on user (email);
 
+grant select, insert, update, delete on `datadb`.`user` to `auth_user`@`%`;
+

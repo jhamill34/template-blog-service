@@ -10,3 +10,4 @@ create table if not exists refresh_token (
 
 create unique index idx_refresh_token on refresh_token (token);
 
+grant select, insert, update, delete on `datadb`.`refresh_token` to `auth_user`@`%`;

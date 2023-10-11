@@ -15,7 +15,7 @@ pubsub:
 auth_server: http://auth_service
 
 database:
-  path: "app-user:password@tcp(app_mysql)/app-db?parseTime=true&multiStatements=true"
+  path: "app_user:app_password@tcp(mysql_store)/datadb?parseTime=true&multiStatements=true"
   migrations:
     - "./migrations/app/*.sql"
 

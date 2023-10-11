@@ -10,3 +10,5 @@ create table if not exists application (
 );
 
 create unique index idx_application_client_id on application (client_id);
+
+grant select, insert, update, delete on `datadb`.`application` to `auth_user`@`%`;

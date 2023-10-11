@@ -5,5 +5,6 @@ create table if not exists post (
 	author varchar(36) not null,
 	created_at timestamp not null default current_timestamp,
 	updated_at timestamp not null default current_timestamp
-)
+);
 
+grant select, insert, update, delete on `datadb`.`post` to `app_user`@`%`;

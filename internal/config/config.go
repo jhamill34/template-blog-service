@@ -15,7 +15,6 @@ type ServerConfig struct {
 
 type DatabaseConfig struct {
 	Path       string   `yaml:"path"`
-	Migrations []string `yaml:"migrations"`
 }
 
 type RedisConfig struct {

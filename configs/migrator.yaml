@@ -1,0 +1,5 @@
+database:
+  path: "root:supersecret@tcp(mysql_store)/datadb?parseTime=true&multiStatements=true"
+
+migrations:
+  - "./migrations/*.sql"

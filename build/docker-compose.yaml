@@ -1,94 +1,67 @@
 version: '3'
 
 services:
-  nginx:
-    image: nginx:latest
-    container_name: nginx_reverse_proxy
-    ports:
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
-      - ./_wildcard.spedue.com.pem:/certs/spedue.com.pem
-      - ./_wildcard.spedue.com-key.pem:/certs/spedue.com-key.pem
+  migration_service:
+    image: server:latest
+    environment:
+      SERVICE: migration
     networks:
       - main
+    depends_on:
+      mysql_store:
+        condition: service_healthy
 
   gateway_service:
     container_name: gateway_service
-    build:
-      context: ../
-      dockerfile: build/gateway/Dockerfile
+    image: server:latest
+    environment:
+      SERVICE: gateway
     networks:
       - main
-    volumes:
-      - ../:/app
     depends_on:
       redis_store:
         condition: service_healthy
 
   app_service:
     container_name: app_service
-    build:
-      context: ../
-      dockerfile: build/app/Dockerfile
+    image: server:latest
+    environment:
+      SERVICE: app
     networks:
       - main
-    volumes:
-      - ../:/app
     depends_on:
-      app_mysql:
-        condition: service_healthy
+      migration_service:
+        condition: service_completed_successfully
       redis_store:
         condition: service_healthy
   
   auth_service:
     container_name: auth_service
-    build:
-      context: ../
-      dockerfile: build/auth/Dockerfile
+    image: server:latest
+    environment:
+      SERVICE: auth
     networks:
       - main
-    volumes:
-      - ../:/app
     depends_on:
-      auth_mysql:
-        condition: service_healthy
+      migration_service:
+        condition: service_completed_successfully
       redis_store:
         condition: service_healthy
+  
 
-  app_mysql:
+  mysql_store:
     image: mysql:latest
-    container_name: app_mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: root-password
-      MYSQL_DATABASE: app-db
-      MYSQL_USER: app-user
-      MYSQL_PASSWORD: password
-    ports:
-      - "10004:3306"
-    networks:
-      - main
-    volumes:
-      - app_mysql_data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
-      timeout: 10s
-      retries: 10
-
-  auth_mysql:
-    image: mysql:latest
-    container_name: auth_mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: root-password
-      MYSQL_DATABASE: auth-db
-      MYSQL_USER: auth-user
-      MYSQL_PASSWORD: password
+    container_name: mysql_store 
     ports:
       - "10003:3306"
     networks:
       - main
+    environment:
+      MYSQL_ROOT_PASSWORD: supersecret
+      MYSQL_DATABASE: datadb
     volumes:
-      - auth_mysql_data:/var/lib/mysql
+      - mysql_data:/var/lib/mysql
+      - ./db:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
       timeout: 10s
@@ -108,11 +81,32 @@ services:
     command: /bin/sh -c 'redis-server --appendonly yes --requirepass $${REDIS_PASSWORD}'
     healthcheck:
       test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+      timeout: 10s
+      retries: 10
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx_reverse_proxy
+    ports:
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./_wildcard.spedue.com.pem:/certs/spedue.com.pem
+      - ./_wildcard.spedue.com-key.pem:/certs/spedue.com-key.pem
+    networks:
+      - main
+    depends_on:
+      auth_service:
+        condition: service_started
+      app_service:
+        condition: service_started
+      gateway_service:
+        condition: service_started
+
 
 volumes:
-  auth_mysql_data:
+  mysql_data:
   redis_data:
-  app_mysql_data:
 
 networks:
   main:

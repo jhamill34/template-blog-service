@@ -16,7 +16,6 @@ import (
 
 type App struct {
 	server  transport.Server
-	setup   func(ctx context.Context)
 	cleanup func(ctx context.Context)
 }
 
@@ -64,17 +63,10 @@ func ConfigureApp() *App {
 			// kv.Close()
 			// subscriber.Close()
 		},
-		setup: func(ctx context.Context) {
-			err := database.Migrate(db, "APP", cfg.Database.Migrations)
-			if err != nil {
-				panic(err)
-			}
-		},
 	}
 }
 
 func (a *App) Start(ctx context.Context) {
-	a.setup(ctx)
 	defer a.cleanup(ctx)
 
 	a.server.Start(ctx)

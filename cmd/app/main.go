@@ -9,8 +9,8 @@ import (
 
 func main() {
 	ctx := context.Background()
-	
-	service := os.Args[1]
+
+	service := os.Getenv("SERVICE")
 	switch service {
 	case "gateway":
 		app.ConfigureGateway().Start(ctx)
@@ -18,5 +18,7 @@ func main() {
 		app.ConfigureAuth().Start(ctx)
 	case "app":
 		app.ConfigureApp().Start(ctx)
+	case "migration":
+		app.ConfigureMigrator().Run()
 	}
 }

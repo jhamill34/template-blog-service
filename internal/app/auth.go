@@ -146,11 +146,6 @@ func ConfigureAuth() *Auth {
 			// publisher.Close()
 		},
 		setup: func(ctx context.Context) {
-			err := database.Migrate(db, "AUTH", cfg.Database.Migrations)
-			if err != nil {
-				panic(err)
-			}
-
 			if cfg.DefaultUser != nil {
 				_, err := authRepo.GetUserByUsername(ctx, "ROOT")
 				if err == services.AccountNotFound {
