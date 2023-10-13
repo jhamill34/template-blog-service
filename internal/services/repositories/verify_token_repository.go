@@ -25,6 +25,7 @@ const (
 	VerificationTypeForgotPassword VerificationType = "forgot_password:"
 	VerificationTypeInvite         VerificationType = "invite:"
 	VerificationTypeAuthCode       VerificationType = "auth_code:"
+	VerificationTypeInviteToOrg       VerificationType = "invite_org:"
 )
 
 type HashedVerifyTokenRepository struct {

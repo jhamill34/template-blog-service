@@ -206,7 +206,7 @@ func (dao *OrganizationDao) GetUsers(
 			user.id as id, 
 			user.name as name, 
 			user.email as email, 
-			user.hashashed_password as hashed_password, 
+			user.hashed_password as hashed_password, 
 			user.verified as verified, 
 			user.created_at as created_at, 
 			user.updated_at as updated_at 

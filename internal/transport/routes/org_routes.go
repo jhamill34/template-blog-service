@@ -55,6 +55,10 @@ func (self *OrganizationRoutes) Routes() (string, http.Handler) {
 	router.Delete("/{id}/policy/{policyId}", self.DeleteOrgPolicy())
 
 	router.Get("/{id}/user", self.ListOrgUsers())
+	router.Get("/{id}/user/new", self.InviteUserToOrg())
+	router.Post("/{id}/user", self.ProcessInviteUserToOrg())
+	router.Get("/join", self.JoinOrg())
+	router.Delete("/{id}/user/{userId}", self.RemoveUserFromOrg())
 
 	return "/org", router
 }
@@ -393,6 +397,18 @@ func (self *OrganizationRoutes) ListOrgUsers() http.HandlerFunc {
 		userCsrfToken := r.Context().Value("csrf_token").(string)
 		orgId := chi.URLParam(r, "id")
 
+		users, err := self.orgService.ListUsers(r.Context(), orgId)
+		if err != nil {
+			utils.SetNotifications(
+				w,
+				err,
+				"/org/"+orgId,
+				self.notificationConfig.Timeout,
+			)
+			http.Redirect(w, r, "/org/"+orgId, http.StatusFound)
+			return 
+		}
+
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		self.templateService.Render(
@@ -403,10 +419,132 @@ func (self *OrganizationRoutes) ListOrgUsers() http.HandlerFunc {
 				ListOrgUsersData{
 					CsrfToken: userCsrfToken,
 					OrgId:     orgId,
-					Users:     []models.User{},
+					Users:     users,
 				},
 				utils.GetNotifications(r),
 			),
 		)
+	}
+}
+
+func (self *OrganizationRoutes) InviteUserToOrg() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userCsrfToken := r.Context().Value("csrf_token").(string)
+		orgId := chi.URLParam(r, "id")
+
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		self.templateService.Render(
+			w,
+			"org_users_create.html",
+			"layout",
+			models.NewTemplate(
+				CreateInOrgData{
+					CsrfToken: userCsrfToken,
+					OrgId:     orgId,
+				},
+				utils.GetNotifications(r),
+			),
+		)
+	}
+}
+
+func (self *OrganizationRoutes) ProcessInviteUserToOrg() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userCsrfToken := r.Context().Value("csrf_token").(string)
+		sessionId := r.Context().Value("session_id").(string)
+
+		orgId := chi.URLParam(r, "id")
+		email := r.FormValue("email")
+		csrfToken := r.FormValue("csrf_token")
+
+		if csrfToken != userCsrfToken {
+			utils.SetNotifications(
+				w,
+				utils.NewGenericMessage("bad request, please try again."),
+				"/org/"+orgId+"/user/new",
+				self.notificationConfig.Timeout,
+			)
+			http.Redirect(w, r, "/org/"+orgId+"/user/new", http.StatusFound)
+			return
+		}
+
+		err := self.orgService.InviteUser(r.Context(), orgId, email)
+		if err != nil {
+			utils.SetNotifications(
+				w,
+				err,
+				"/org/"+orgId+"/user/new",
+				self.notificationConfig.Timeout,
+			)
+			http.Redirect(w, r, "/org/"+orgId+"/user/new", http.StatusFound)
+			return
+		}
+
+		self.sessionService.UpdateCsrf(r.Context(), sessionId, uuid.New().String())
+		http.Redirect(w, r, "/org/"+orgId+"/user", http.StatusFound)
+	}
+}
+
+func (self *OrganizationRoutes) JoinOrg() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userId := r.Context().Value("user_id").(string)
+
+		token := r.URL.Query().Get("token")
+		tokenId := r.URL.Query().Get("token_id")
+
+
+		err := self.orgService.Join(r.Context(), tokenId, token, userId)
+		if err != nil {
+			utils.SetNotifications(
+				w,
+				err,
+				"/org",
+				self.notificationConfig.Timeout,
+			)
+			http.Redirect(w, r, "/org", http.StatusFound)
+			return
+		}
+
+		http.Redirect(w, r, "/org", http.StatusFound)
+	}
+}
+
+func (self *OrganizationRoutes) RemoveUserFromOrg() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userCsrfToken := r.Context().Value("csrf_token").(string)
+		sessionId := r.Context().Value("session_id").(string)
+
+		orgId := chi.URLParam(r, "id")
+		userId := chi.URLParam(r, "userId")
+		csrfToken := r.URL.Query().Get("csrf_token")
+
+		if csrfToken != userCsrfToken {
+			utils.SetNotifications(
+				w,
+				utils.NewGenericMessage("bad request, please try again."),
+				"/org/"+orgId+"/user",
+				self.notificationConfig.Timeout,
+			)
+			http.Redirect(w, r, "/org/"+orgId+"/user", http.StatusFound)
+			return
+		}
+
+		err := self.orgService.RemoveUser(r.Context(), orgId, userId)
+		if err != nil {
+			utils.SetNotifications(
+				w,
+				err,
+				"/org/"+orgId+"/user",
+				self.notificationConfig.Timeout,
+			)
+			http.Redirect(w, r, "/org/"+orgId+"/user", http.StatusFound)
+			return
+		}
+
+		self.sessionService.UpdateCsrf(r.Context(), sessionId, uuid.New().String())
+
+		w.Header().Set("HX-Redirect", "/org/"+orgId+"/user")
+		w.WriteHeader(http.StatusNoContent)
 	}
 }

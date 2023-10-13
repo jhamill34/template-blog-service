@@ -50,7 +50,8 @@ type OrganizationService interface {
 	DeletePolicy(ctx context.Context, orgId string, policyId int) models.Notifier
 
 	ListUsers(ctx context.Context, orgId string) ([]models.User, models.Notifier)
-	AddUser(ctx context.Context, orgId, email string) models.Notifier
+	InviteUser(ctx context.Context, orgId, email string) models.Notifier
+	Join(ctx context.Context, tokenId, token, userId string) models.Notifier
 	RemoveUser(ctx context.Context, orgId, userId string) models.Notifier
 
 	ListUsersOrgs(ctx context.Context, userId string) ([]models.Organization, models.Notifier)

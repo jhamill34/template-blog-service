@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"bytes"
 	"context"
 
 	"github.com/google/uuid"
@@ -12,16 +13,28 @@ import (
 
 type OrganizationRepository struct {
 	organizationDao      *dao.OrganizationDao
+	userDao              *dao.UserDao
 	accessControlService services.AccessControlService
+	tokenService         services.TokenClaimsService
+	emailService         services.EmailService
+	templateService      services.TemplateService
 }
 
 func NewOrganizationRepository(
 	organizationDao *dao.OrganizationDao,
+	userDao *dao.UserDao,
 	accessControlService services.AccessControlService,
+	tokenService services.TokenClaimsService,
+	emailService services.EmailService,
+	templateservice services.TemplateService,
 ) *OrganizationRepository {
 	return &OrganizationRepository{
 		organizationDao:      organizationDao,
+		userDao:              userDao,
 		accessControlService: accessControlService,
+		tokenService:         tokenService,
+		emailService:         emailService,
+		templateService:      templateservice,
 	}
 }
 
@@ -90,12 +103,15 @@ func (self *OrganizationRepository) GetOrganizationBydId(
 }
 
 // DeleteOrganization implements services.OrganizationService.
-func (self *OrganizationRepository) DeleteOrganization(ctx context.Context, id string) models.Notifier {
+func (self *OrganizationRepository) DeleteOrganization(
+	ctx context.Context,
+	id string,
+) models.Notifier {
 	err := self.organizationDao.RemoveAllUsers(ctx, id)
 	if err != nil {
 		panic(err)
 	}
-	
+
 	err = self.organizationDao.DeleteOrganization(ctx, id)
 	if err != nil {
 		panic(err)
@@ -121,10 +137,10 @@ func (self *OrganizationRepository) ListPolicies(
 	policies := make([]models.Policy, len(permissions))
 	for i := 0; i < len(policies); i++ {
 		policies[i] = models.Policy{
-			PolicyId:  permissions[i].Id,
-			Resource:  permissions[i].Resource,
-			Action:    permissions[i].Action,
-			Effect:    permissions[i].Effect,
+			PolicyId: permissions[i].Id,
+			Resource: permissions[i].Resource,
+			Action:   permissions[i].Action,
+			Effect:   permissions[i].Effect,
 		}
 	}
 
@@ -166,27 +182,117 @@ func (self *OrganizationRepository) DeletePolicy(
 //==============================================================================
 
 // ListUsers implements services.OrganizationService.
-func (*OrganizationRepository) ListUsers(
+func (self *OrganizationRepository) ListUsers(
 	ctx context.Context,
 	orgId string,
 ) ([]models.User, models.Notifier) {
-	panic("unimplemented")
+	data, err := self.organizationDao.GetUsers(ctx, orgId)
+	if err != nil {
+		panic(err)
+	}
+
+	users := make([]models.User, len(data))
+	for i := 0; i < len(users); i++ {
+		users[i] = models.User{
+			UserId: data[i].Id,
+			Name:   data[i].Name,
+			Email:  data[i].Email,
+		}
+	}
+
+	return users, nil
 }
 
 // AddUser implements services.OrganizationService.
-func (*OrganizationRepository) AddUser(
+func (self *OrganizationRepository) InviteUser(
 	ctx context.Context,
 	orgId string,
 	email string,
 ) models.Notifier {
-	panic("unimplemented")
+	org, err := self.GetOrganizationBydId(ctx, orgId)
+	if err != nil {
+		return err
+	}
+
+	user, dberr := self.userDao.FindByEmail(ctx, email)
+	if dberr != nil {
+		if dberr == database.NotFound {
+			return services.UserNotFound
+		}
+
+		panic(dberr)
+	}
+
+	newId := uuid.New().String()
+	token := self.tokenService.CreateWithClaims(
+		ctx,
+		newId,
+		models.InviteData{
+			InvitedBy: orgId,
+			Email:     user.Email,
+		},
+	)
+
+	buffer := bytes.Buffer{}
+	data := models.EmailWithTokenData{
+		Token: token,
+		Id:    newId,
+	}
+	self.templateService.Render(
+		&buffer,
+		"org_invite_email.html",
+		"layout",
+		models.NewTemplateData(map[string]interface{}{
+			"Name":      org.Name,
+			"TokenData": data,
+		}),
+	)
+
+	self.emailService.SendEmail(ctx, user.Email, "You have been invited", buffer.String())
+
+	return nil
+}
+
+// AddUser implements services.OrganizationService.
+func (self *OrganizationRepository) Join(
+	ctx context.Context,
+	tokenId, token, userId string,
+) models.Notifier {
+	var inviteData models.InviteData
+	claimErr := self.tokenService.VerifyWithClaims(ctx, tokenId, token, &inviteData)
+	if claimErr != nil {
+		return claimErr
+	}
+
+	user, err := self.userDao.FindById(ctx, userId)
+	if err != nil {
+		panic(err)
+	}
+
+	if user.Email != inviteData.Email {
+		panic(err)
+	}
+
+	err = self.organizationDao.AddUser(ctx, inviteData.InvitedBy, userId)
+	if err != nil {
+		panic(err)
+	}
+
+	self.tokenService.Destroy(ctx, tokenId)
+
+	return nil
 }
 
 // RemoveUser implements services.OrganizationService.
-func (*OrganizationRepository) RemoveUser(
+func (self *OrganizationRepository) RemoveUser(
 	ctx context.Context,
 	orgId string,
 	userId string,
 ) models.Notifier {
-	panic("unimplemented")
+	err := self.organizationDao.RemoveUser(ctx, orgId, userId)
+	if err != nil {
+		panic(err)
+	}
+
+	return nil
 }

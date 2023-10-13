@@ -73,6 +73,12 @@ func ConfigureAuth() *Auth {
 		repositories.VerificationTypeAuthCode,
 		cfg.PasswordConfig,
 	)
+	inviteToOrgTokenService := repositories.NewHashedVerifyTokenRepository(
+		kv,
+		cfg.InviteTTL,
+		repositories.VerificationTypeInviteToOrg,
+		cfg.PasswordConfig,
+	)
 
 	emailService := &email.MockEmailService{}
 
@@ -109,7 +115,14 @@ func ConfigureAuth() *Auth {
 	)
 
 	orgDao := dao.NewOrganizationDao(db)
-	orgRepo := repositories.NewOrganizationRepository(orgDao, accessControlService)
+	orgRepo := repositories.NewOrganizationRepository(
+		orgDao,
+		userDao,
+		accessControlService,
+		inviteToOrgTokenService,
+		emailService,
+		templateRepository,
+	)
 
 	return &Auth{
 		server: transport.NewServer(
