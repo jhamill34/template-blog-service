@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/jhamill34/notion-provisioner/internal/database"
 	"github.com/jhamill34/notion-provisioner/internal/database/dao"
@@ -79,7 +80,10 @@ func (self *UserRepository) GetUser(
 }
 
 // ListPolicies implements services.UserService.
-func (self *UserRepository) ListPolicies(ctx context.Context, id string) ([]models.Policy, models.Notifier) {
+func (self *UserRepository) ListPolicies(
+	ctx context.Context,
+	id string,
+) ([]models.Policy, models.Notifier) {
 	if acErr := self.accessControlService.Enforce(ctx, "/user/"+id+"/policy", "list"); acErr != nil {
 		return nil, acErr
 	}
@@ -124,9 +128,9 @@ func (self *UserRepository) CreatePolicy(
 
 func (self *UserRepository) DeletePolicy(
 	ctx context.Context,
-	id, policyId string,
+	id string, policyId int,
 ) models.Notifier {
-	if acErr := self.accessControlService.Enforce(ctx, "/user/"+id+"/policy/"+policyId, "delete"); acErr != nil {
+	if acErr := self.accessControlService.Enforce(ctx, "/user/"+id+"/policy/"+fmt.Sprintf("%d", policyId), "delete"); acErr != nil {
 		return acErr
 	}
 

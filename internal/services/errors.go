@@ -125,3 +125,20 @@ func NewAccessControlError(message string) *AccessControlError {
 }
 
 var AccessDenied *AccessControlError = NewAccessControlError("Access denied")
+
+//==================================================
+
+type OrganizationServiceError struct {
+	Message string
+}
+
+func (self *OrganizationServiceError) Notify() *models.Notification {
+	return &models.Notification{Message: self.Message}
+}
+
+func NewOrganizationServiceError(message string) *OrganizationServiceError {
+	return &OrganizationServiceError{Message: message}
+}
+
+var OrganizationNotFound *OrganizationServiceError = NewOrganizationServiceError("Organization not found")
+

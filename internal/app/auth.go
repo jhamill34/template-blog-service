@@ -108,6 +108,9 @@ func ConfigureAuth() *Auth {
 		cfg.AccessToken,
 	)
 
+	orgDao := dao.NewOrganizationDao(db)
+	orgRepo := repositories.NewOrganizationRepository(orgDao, accessControlService)
+
 	return &Auth{
 		server: transport.NewServer(
 			cfg.Server,
@@ -138,6 +141,12 @@ func ConfigureAuth() *Auth {
 				sessionStore,
 				signer,
 				userService,
+			),
+			routes.NewOrganizationRoutes(
+				cfg.Notifications,
+				sessionStore,
+				templateRepository,
+				orgRepo,
 			),
 		),
 		cleanup: func(_ context.Context) {

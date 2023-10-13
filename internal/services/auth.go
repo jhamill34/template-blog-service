@@ -36,7 +36,23 @@ type UserService interface {
 	GetUser(ctx context.Context, id string) (*models.User, models.Notifier)
 	ListPolicies(ctx context.Context, id string) ([]models.Policy, models.Notifier)
 	CreatePolicy(ctx context.Context, id, resource, action, effect string) models.Notifier
-	DeletePolicy(ctx context.Context, id, policyId string) models.Notifier
+	DeletePolicy(ctx context.Context, id string, policyId int) models.Notifier
+}
+
+type OrganizationService interface {
+	CreateOrganization(ctx context.Context, userId, name, description string) models.Notifier
+	GetOrganizationBydId(ctx context.Context, id string) (*models.Organization, models.Notifier)
+	DeleteOrganization(ctx context.Context, id string) models.Notifier
+
+	ListPolicies(ctx context.Context, id string) ([]models.Policy, models.Notifier)
+	CreatePolicy(ctx context.Context, orgId, resource, action, effect string) models.Notifier
+	DeletePolicy(ctx context.Context, orgId string, policyId int) models.Notifier
+
+	ListUsers(ctx context.Context, orgId string) ([]models.User, models.Notifier)
+	AddUser(ctx context.Context, orgId, email string) models.Notifier
+	RemoveUser(ctx context.Context, orgId, userId string) models.Notifier
+
+	ListUsersOrgs(ctx context.Context, userId string) ([]models.Organization, models.Notifier)
 }
 
 type ApplicationService interface {

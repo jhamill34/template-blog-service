@@ -1,0 +1,28 @@
+{{ template "layout.html" . }}
+
+{{ define "title" }}
+Create Organization
+{{ end }}
+
+{{ define "content" }}
+<div class="flex justify-center">
+	<div class="flex-1 p-8 ring-1 ring-gray-300 rounded m-4 max-w-sm">
+		<h1 class="font-bold text-gray-900 text-xl text-center mb-4 border-b border-gray-300 p-2">Create an App</h1>
+		<form method="POST" action="/org">
+			<div class="text-sm mb-4 flex flex-col">
+				<label class="font-bold block text-gray-900" for="name">Name</label>
+				<input class="block border-0 ring-1 ring-inset ring-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-inset focus:ring-indigo-600" id="name" type="text" name="name" placeholder="App Name" />
+			</div>
+			
+			<div class="text-sm mb-4 flex flex-col">
+				<label class="font-bold block text-gray-900" for="redirect_uri">Description</label>
+				<input class="block border-0 ring-1 ring-inset ring-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-inset focus:ring-indigo-600" id="description" type="text" name="description" placeholder="Description" />
+			</div>
+			
+			<input type="hidden" name="csrf_token" value="{{ .CsrfToken }}" />
+
+			<button class="w-full bg-indigo-600 py-2 rounded font-bold text-white hover:bg-indigo-500 transition-colors">Create</button>
+		</form>
+	</div>
+</div>
+{{ end }}

@@ -200,7 +200,7 @@ func (dao *UserDao) CreatePermission(
 
 func (dao *UserDao) DeletePermission(
 	ctx context.Context,
-	id, permissionId string,
+	id string, permissionId int,
 ) error {
 	db := dao.databaseProvider.Get()
 

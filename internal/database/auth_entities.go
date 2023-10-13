@@ -20,25 +20,6 @@ type UserPermissionEntity struct {
 	Effect   string `db:"effect"`
 }
 
-type RoleEntity struct {
-	Id   int    `db:"id"`
-	Name string `db:"name"`
-}
-
-type RolePermissionEntity struct {
-	Id       int    `db:"id"`
-	RoleId   int    `db:"role_id"`
-	Resource string `db:"resource"`
-	Action   string `db:"action"`
-	Effect   string `db:"effect"`
-}
-
-type RoleUserEntity struct {
-	Id     int    `db:"id"`
-	RoleId int    `db:"role_id"`
-	UserId string `db:"user_id"`
-}
-
 type ApplicationEntity struct {
 	Id                 string    `db:"id"`
 	ClientId           string    `db:"client_id"`
@@ -55,4 +36,24 @@ type RefreshTokenEntity struct {
 	UserId string `db:"user_id"`
 	AppId  string `db:"app_id"`
 	Token  string `db:"token"`
+}
+
+type OrganizationEntity struct {
+	Id          string `db:"id"`
+	Name        string `db:"name"`
+	Description string `db:"description"`
+}
+
+type OrganizationPermissionEntity struct {
+	Id       int    `db:"id"`
+	OrgId    string `db:"org_id"`
+	Resource string `db:"resource"`
+	Action   string `db:"action"`
+	Effect   string `db:"effect"`
+}
+
+type OrganizationUserEntity struct {
+	Id     int    `db:"id"`
+	OrgId  string `db:"org_id"`
+	UserId string `db:"user_id"`
 }

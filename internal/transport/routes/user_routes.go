@@ -2,6 +2,7 @@ package routes
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -126,7 +127,10 @@ func (self *UserRoutes) ListPolicies() http.HandlerFunc {
 			w,
 			"users_policy_list.html",
 			"layout",
-			models.NewTemplate(PolicyListData{userId, userCsrfToken, policies}, utils.GetNotifications(r)),
+			models.NewTemplate(
+				PolicyListData{userId, userCsrfToken, policies},
+				utils.GetNotifications(r),
+			),
 		)
 	}
 }
@@ -195,7 +199,19 @@ func (self *UserRoutes) DeletePolicy() http.HandlerFunc {
 		userCsrfToken := r.Context().Value("csrf_token").(string)
 		sessionId := r.Context().Value("session_id").(string)
 		userId := chi.URLParam(r, "id")
-		policyId := chi.URLParam(r, "policyId")
+		policyId, err := strconv.ParseInt(chi.URLParam(r, "policyId"), 10, 64)
+		if err != nil {
+			utils.SetNotifications(
+				w,
+				utils.NewGenericMessage("Bad request, try again"),
+				"/user/"+userId+"/policy",
+				self.notificationConfig.Timeout,
+			)
+			w.Header().Set("HX-Redirect", "/user/"+userId+"/policy")
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
 		csrfToken := r.URL.Query().Get("csrf_token")
 
 		if csrfToken != userCsrfToken {
@@ -210,7 +226,7 @@ func (self *UserRoutes) DeletePolicy() http.HandlerFunc {
 			return
 		}
 
-		if err := self.userService.DeletePolicy(r.Context(), userId, policyId); err != nil {
+		if err := self.userService.DeletePolicy(r.Context(), userId, int(policyId)); err != nil {
 			utils.SetNotifications(
 				w,
 				err,

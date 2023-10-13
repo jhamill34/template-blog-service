@@ -6,6 +6,12 @@ type User struct {
 	Email  string `json:"email"`
 }
 
+type Organization struct {
+	OrgId       string `json:"org_id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
 type App struct {
 	AppId       string `json:"app_id"`
 	ClientId    string `json:"client_id"`
@@ -18,4 +24,3 @@ type InviteData struct {
 	InvitedBy string `json:"invited_by"`
 	Email     string `json:"email"`
 }
-

@@ -36,8 +36,13 @@ services:
         condition: service_healthy
   
   auth_service:
+    # image: server:latest
     container_name: auth_service
-    image: server:latest
+    build:
+      context: ..
+      dockerfile: air/Dockerfile
+    volumes:
+      - ../:/app
     environment:
       SERVICE: auth
     networks:
