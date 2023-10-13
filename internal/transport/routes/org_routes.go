@@ -2,6 +2,7 @@ package routes
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -46,6 +47,12 @@ func (self *OrganizationRoutes) Routes() (string, http.Handler) {
 
 	router.Get("/{id}", self.GetOrg())
 	router.Delete("/{id}", self.DeleteOrg())
+
+	router.Get("/{id}/policy", self.ListOrgPolicies())
+
+	router.Get("/{id}/policy/new", self.CreateOrgPolicy())
+	router.Post("/{id}/policy", self.ProcessCreateOrgPolicy())
+	router.Delete("/{id}/policy/{policyId}", self.DeleteOrgPolicy())
 
 	return "/org", router
 }
@@ -165,7 +172,7 @@ func (self *OrganizationRoutes) GetOrg() http.HandlerFunc {
 				self.notificationConfig.Timeout,
 			)
 			http.Redirect(w, r, "/org", http.StatusFound)
-			return	
+			return
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -177,7 +184,7 @@ func (self *OrganizationRoutes) GetOrg() http.HandlerFunc {
 			models.NewTemplate(
 				GetOrgData{
 					CsrfToken: userCsrfToken,
-					Org: org,
+					Org:       org,
 				},
 				utils.GetNotifications(r),
 			),
@@ -223,3 +230,152 @@ func (self *OrganizationRoutes) DeleteOrg() http.HandlerFunc {
 	}
 }
 
+type ListOrgPoliciesData struct {
+	CsrfToken string
+	Policies  []models.Policy
+	OrgId     string
+}
+
+func (self *OrganizationRoutes) ListOrgPolicies() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userCsrfToken := r.Context().Value("csrf_token").(string)
+		orgId := chi.URLParam(r, "id")
+
+		policies, err := self.orgService.ListPolicies(r.Context(), orgId)
+		if err != nil {
+			utils.SetNotifications(
+				w,
+				err,
+				"/org/"+orgId,
+				self.notificationConfig.Timeout,
+			)
+			http.Redirect(w, r, "/org/"+orgId, http.StatusFound)
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		self.templateService.Render(
+			w,
+			"org_policy_list.html",
+			"layout",
+			models.NewTemplate(
+				ListOrgPoliciesData{
+					CsrfToken: userCsrfToken,
+					Policies:  policies,
+					OrgId:     orgId,
+				},
+				utils.GetNotifications(r),
+			),
+		)
+	}
+}
+
+type CreateOrgPolicyData struct {
+	CsrfToken string
+	OrgId     string
+}
+
+func (self *OrganizationRoutes) CreateOrgPolicy() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userCsrfToken := r.Context().Value("csrf_token").(string)
+		orgId := chi.URLParam(r, "id")
+
+		self.templateService.Render(
+			w,
+			"org_policy_create.html",
+			"layout",
+			models.NewTemplate(
+				CreateOrgPolicyData{
+					CsrfToken: userCsrfToken,
+					OrgId:     orgId,
+				},
+				utils.GetNotifications(r),
+			),
+		)
+	}
+}
+
+func (self *OrganizationRoutes) ProcessCreateOrgPolicy() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userCsrfToken := r.Context().Value("csrf_token").(string)
+		sessionId := r.Context().Value("session_id").(string)
+
+		resource := r.FormValue("resource")
+		action := r.FormValue("action")
+		effect := r.FormValue("effect")
+		orgId := chi.URLParam(r, "id")
+
+		csrfToken := r.FormValue("csrf_token")
+
+		if csrfToken != userCsrfToken {
+			utils.SetNotifications(
+				w,
+				utils.NewGenericMessage("bad request, please try again."),
+				"/org/"+orgId+"/policy/new",
+				self.notificationConfig.Timeout,
+			)
+			http.Redirect(w, r, "/org/"+orgId+"/policy/new", http.StatusFound)
+			return
+		}
+
+		err := self.orgService.CreatePolicy(r.Context(), orgId, resource, action, effect)
+
+		if err != nil {
+			utils.SetNotifications(
+				w,
+				err,
+				"/org/"+orgId+"/policy/new",
+				self.notificationConfig.Timeout,
+			)
+			http.Redirect(w, r, "/org/"+orgId+"/policy/new", http.StatusFound)
+			return
+		}
+
+		self.sessionService.UpdateCsrf(r.Context(), sessionId, uuid.New().String())
+		http.Redirect(w, r, "/org/"+orgId+"/policy", http.StatusFound)
+	}
+}
+
+func (self *OrganizationRoutes) DeleteOrgPolicy() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userCsrfToken := r.Context().Value("csrf_token").(string)
+		sessionId := r.Context().Value("session_id").(string)
+
+		id := chi.URLParam(r, "id")
+		policyId, parseIntErr := strconv.ParseInt(chi.URLParam(r, "policyId"), 10, 64)
+		if parseIntErr != nil {
+			panic(parseIntErr)
+		}
+
+		csrfToken := r.URL.Query().Get("csrf_token")
+
+		if csrfToken != userCsrfToken {
+			utils.SetNotifications(
+				w,
+				utils.NewGenericMessage("bad request, please try again."),
+				"/org/"+id+"/policy",
+				self.notificationConfig.Timeout,
+			)
+			http.Redirect(w, r, "/org/"+id+"/policy", http.StatusFound)
+			return
+		}
+
+		err := self.orgService.DeletePolicy(r.Context(), id, int(policyId))
+		if err != nil {
+			utils.SetNotifications(
+				w,
+				err,
+				"/org/"+id+"/policy",
+				self.notificationConfig.Timeout,
+			)
+			http.Redirect(w, r, "/org/"+id+"/policy", http.StatusFound)
+			return
+		}
+
+		self.sessionService.UpdateCsrf(r.Context(), sessionId, uuid.New().String())
+
+		w.Header().Set("HX-Redirect", "/org/"+id+"/policy")
+		w.WriteHeader(http.StatusNoContent)
+	}
+}

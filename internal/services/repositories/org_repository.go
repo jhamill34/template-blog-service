@@ -109,31 +109,56 @@ func (self *OrganizationRepository) DeleteOrganization(ctx context.Context, id s
 //==============================================================================
 
 // ListPolicies implements services.OrganizationService.
-func (*OrganizationRepository) ListPolicies(
+func (self *OrganizationRepository) ListPolicies(
 	ctx context.Context,
 	id string,
 ) ([]models.Policy, models.Notifier) {
-	panic("unimplemented")
+	permissions, err := self.organizationDao.GetPermissions(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+
+	policies := make([]models.Policy, len(permissions))
+	for i := 0; i < len(policies); i++ {
+		policies[i] = models.Policy{
+			PolicyId:  permissions[i].Id,
+			Resource:  permissions[i].Resource,
+			Action:    permissions[i].Action,
+			Effect:    permissions[i].Effect,
+		}
+	}
+
+	return policies, nil
 }
 
 // CreatePolicy implements services.OrganizationService.
-func (*OrganizationRepository) CreatePolicy(
+func (self *OrganizationRepository) CreatePolicy(
 	ctx context.Context,
 	orgId string,
 	resource string,
 	action string,
 	effect string,
 ) models.Notifier {
-	panic("unimplemented")
+	err := self.organizationDao.CreatePermission(ctx, orgId, resource, action, effect)
+	if err != nil {
+		panic(err)
+	}
+
+	return nil
 }
 
 // DeletePolicy implements services.OrganizationService.
-func (*OrganizationRepository) DeletePolicy(
+func (self *OrganizationRepository) DeletePolicy(
 	ctx context.Context,
 	orgId string,
 	policyId int,
 ) models.Notifier {
-	panic("unimplemented")
+	err := self.organizationDao.DeletePermission(ctx, orgId, policyId)
+	if err != nil {
+		panic(err)
+	}
+
+	return nil
 }
 
 //==============================================================================
