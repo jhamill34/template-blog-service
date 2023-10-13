@@ -24,3 +24,8 @@ type InviteData struct {
 	InvitedBy string `json:"invited_by"`
 	Email     string `json:"email"`
 }
+
+type EmailWithTokenData struct {
+	Token string `json:"token"`
+	Id    string `json:"id"`
+}

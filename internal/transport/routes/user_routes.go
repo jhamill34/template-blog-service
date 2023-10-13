@@ -73,9 +73,15 @@ func (self *UserRoutes) ListUsers() http.HandlerFunc {
 	}
 }
 
+type GetUserData struct {
+	CsrfToken string
+	User      *models.User
+}
+
 func (self *UserRoutes) GetUser() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userId := chi.URLParam(r, "id")
+		csrfToken := r.Context().Value("csrf_token").(string)
 
 		user, err := self.userService.GetUser(r.Context(), userId)
 		if err != nil {
@@ -94,7 +100,13 @@ func (self *UserRoutes) GetUser() http.HandlerFunc {
 			w,
 			"users_view.html",
 			"layout",
-			models.NewTemplate(user, utils.GetNotifications(r)),
+			models.NewTemplate(
+				GetUserData{
+					CsrfToken: csrfToken,
+					User: user,
+				}, 
+				utils.GetNotifications(r),
+			),
 		)
 	}
 }
@@ -244,3 +256,4 @@ func (self *UserRoutes) DeletePolicy() http.HandlerFunc {
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
+

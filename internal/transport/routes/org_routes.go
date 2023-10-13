@@ -54,6 +54,8 @@ func (self *OrganizationRoutes) Routes() (string, http.Handler) {
 	router.Post("/{id}/policy", self.ProcessCreateOrgPolicy())
 	router.Delete("/{id}/policy/{policyId}", self.DeleteOrgPolicy())
 
+	router.Get("/{id}/user", self.ListOrgUsers())
+
 	return "/org", router
 }
 
@@ -271,7 +273,7 @@ func (self *OrganizationRoutes) ListOrgPolicies() http.HandlerFunc {
 	}
 }
 
-type CreateOrgPolicyData struct {
+type CreateInOrgData struct {
 	CsrfToken string
 	OrgId     string
 }
@@ -286,7 +288,7 @@ func (self *OrganizationRoutes) CreateOrgPolicy() http.HandlerFunc {
 			"org_policy_create.html",
 			"layout",
 			models.NewTemplate(
-				CreateOrgPolicyData{
+				CreateInOrgData{
 					CsrfToken: userCsrfToken,
 					OrgId:     orgId,
 				},
@@ -377,5 +379,34 @@ func (self *OrganizationRoutes) DeleteOrgPolicy() http.HandlerFunc {
 
 		w.Header().Set("HX-Redirect", "/org/"+id+"/policy")
 		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+type ListOrgUsersData struct {
+	CsrfToken string
+	Users     []models.User
+	OrgId     string
+}
+
+func (self *OrganizationRoutes) ListOrgUsers() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userCsrfToken := r.Context().Value("csrf_token").(string)
+		orgId := chi.URLParam(r, "id")
+
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		self.templateService.Render(
+			w,
+			"org_users_list.html",
+			"layout",
+			models.NewTemplate(
+				ListOrgUsersData{
+					CsrfToken: userCsrfToken,
+					OrgId:     orgId,
+					Users:     []models.User{},
+				},
+				utils.GetNotifications(r),
+			),
+		)
 	}
 }

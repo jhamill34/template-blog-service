@@ -121,6 +121,7 @@ func ConfigureAuth() *Auth {
 				sessionStore,
 				templateRepository,
 				accessControlService,
+				emailService,
 			),
 			routes.NewOauthRoutes(
 				appService,

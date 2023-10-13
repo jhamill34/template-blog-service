@@ -81,6 +81,24 @@ func (repo *AuthRepository) LoginUser(
 	}, nil
 }
 
+func (repo *AuthRepository) GetUserByEmail(ctx context.Context, email string) (*models.User, models.Notifier) {
+	user, err := repo.userDao.FindByEmail(ctx, email)
+
+	if err == database.NotFound {
+		return nil, services.AccountNotFound
+	}
+
+	if err != nil {
+		panic(err)
+	}
+
+	return &models.User{
+		UserId: user.Id,
+		Name:   user.Name,
+		Email:  user.Email,
+	}, nil
+}
+
 func (repo *AuthRepository) GetUserById(
 	ctx context.Context,
 	id string,
@@ -126,6 +144,7 @@ func (repo *AuthRepository) GetUserByUsername(
 func (repo *AuthRepository) CreateUser(
 	ctx context.Context,
 	username, email, password string,
+	verified bool,
 ) models.Notifier {
 	if username == ROOT_NAME {
 		return services.EmailAlreadyInUse
@@ -137,7 +156,7 @@ func (repo *AuthRepository) CreateUser(
 	}
 
 	id := uuid.New().String()
-	user, err := repo.userDao.CreateUser(ctx, id, username, email, encodedHash, false)
+	user, err := repo.userDao.CreateUser(ctx, id, username, email, encodedHash, verified)
 	if err == database.Duplicate {
 		return services.EmailAlreadyInUse
 	}
@@ -146,7 +165,9 @@ func (repo *AuthRepository) CreateUser(
 		panic(err)
 	}
 
-	repo.sendVerifyEmail(ctx, user)
+	if !verified {
+		repo.sendVerifyEmail(ctx, user)
+	}
 
 	return nil
 }
@@ -173,10 +194,6 @@ func (repo *AuthRepository) ResendVerifyEmail(
 	return nil
 }
 
-type EmailWithTokenData struct {
-	Token string
-	Id    string
-}
 
 func (repo *AuthRepository) sendVerifyEmail(
 	ctx context.Context,
@@ -185,7 +202,10 @@ func (repo *AuthRepository) sendVerifyEmail(
 	token := repo.verifyTokenService.Create(ctx, user.Id)
 
 	buffer := bytes.Buffer{}
-	data := EmailWithTokenData{token, user.Id}
+	data := models.EmailWithTokenData{
+		Token: token, 
+		Id: user.Id,
+	}
 	repo.templateService.Render(
 		&buffer,
 		"register_email.html",
@@ -299,36 +319,9 @@ func (repo *AuthRepository) VerifyUser(
 
 func (repo *AuthRepository) CreateForgotPasswordToken(
 	ctx context.Context,
-	email string,
-) models.Notifier {
-	user, err := repo.userDao.FindByEmail(ctx, email)
-	if err == database.NotFound {
-		return services.AccountNotFound
-	}
-
-	if err != nil {
-		panic(err)
-	}
-
-	token := repo.passwordForgotService.Create(ctx, user.Id)
-
-	buffer := bytes.Buffer{}
-	data := EmailWithTokenData{token, user.Id}
-	repo.templateService.Render(
-		&buffer,
-		"forgot_password_email.html",
-		"layout",
-		models.NewTemplateData(data),
-	)
-
-	repo.emailService.SendEmail(
-		ctx,
-		user.Email,
-		"Reset your password email",
-		buffer.String(),
-	)
-
-	return nil
+	userId string,
+) string {
+	return repo.passwordForgotService.Create(ctx, userId)
 }
 
 func (repo *AuthRepository) InviteUser(
@@ -348,7 +341,10 @@ func (repo *AuthRepository) InviteUser(
 	)
 
 	buffer := bytes.Buffer{}
-	data := EmailWithTokenData{token, newId}
+	data := models.EmailWithTokenData{
+		Token: token, 
+		Id: newId,
+	}
 	repo.templateService.Render(
 		&buffer,
 		"invite_email.html",

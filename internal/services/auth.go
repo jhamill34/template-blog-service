@@ -12,7 +12,7 @@ type AuthService interface {
 		email string,
 		password string,
 	) (*models.User, models.Notifier)
-	CreateUser(ctx context.Context, username, email, password string) models.Notifier
+	CreateUser(ctx context.Context, username, email, password string, verified bool) models.Notifier
 	VerifyInvite(
 		ctx context.Context,
 		id, token string,
@@ -25,10 +25,11 @@ type AuthService interface {
 	ChangePassword(ctx context.Context, id, currentPassword, newPassword string) models.Notifier
 	ChangePasswordWithToken(ctx context.Context, id, token, newPassword string) models.Notifier
 	VerifyUser(ctx context.Context, id, token string) models.Notifier
-	CreateForgotPasswordToken(ctx context.Context, email string) models.Notifier
+	CreateForgotPasswordToken(ctx context.Context, userId string) string
 
 	GetUserById(ctx context.Context, id string) (*models.User, models.Notifier)
 	GetUserByUsername(ctx context.Context, username string) (*models.User, models.Notifier)
+	GetUserByEmail(ctx context.Context, email string) (*models.User, models.Notifier)
 }
 
 type UserService interface {
@@ -68,7 +69,10 @@ type ApplicationService interface {
 	NewAuthCode(ctx context.Context, userId, clientId string) string
 	GetAuthCode(ctx context.Context, code string) (string, string, models.Notifier)
 	ValidateAppSecret(ctx context.Context, id, secret string) (*models.App, models.Notifier)
-	NewAccessToken(ctx context.Context, userId, clientId, refreshToken string) (*models.AccessTokenResponse, models.Notifier)
+	NewAccessToken(
+		ctx context.Context,
+		userId, clientId, refreshToken string,
+	) (*models.AccessTokenResponse, models.Notifier)
 	VerifyAccessToken(ctx context.Context, accessToken string) bool
 	FindRefreshToken(ctx context.Context, refreshToken string) (string, string, models.Notifier)
 }
@@ -83,4 +87,3 @@ type TokenClaimsService interface {
 	CreateWithClaims(ctx context.Context, id string, data interface{}) string
 	Destroy(ctx context.Context, id string)
 }
-

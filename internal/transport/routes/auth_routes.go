@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
 
@@ -20,6 +21,7 @@ type AuthRoutes struct {
 	sessionService       services.SessionService
 	templateService      services.TemplateService
 	accessControlService services.AccessControlService
+	emailService         services.EmailService
 }
 
 func NewAuthRoutes(
@@ -29,6 +31,7 @@ func NewAuthRoutes(
 	sessionService services.SessionService,
 	templateService services.TemplateService,
 	accessControlService services.AccessControlService,
+	emailService services.EmailService,
 ) *AuthRoutes {
 	return &AuthRoutes{
 		notificationConfig:   notificationConfig,
@@ -37,6 +40,7 @@ func NewAuthRoutes(
 		sessionService:       sessionService,
 		templateService:      templateService,
 		accessControlService: accessControlService,
+		emailService:         emailService,
 	}
 }
 
@@ -67,6 +71,8 @@ func (r *AuthRoutes) Routes() (string, http.Handler) {
 		group.Get("/", r.Home())
 		group.Get("/invite", r.Invite())
 		group.Post("/invite", r.ProcessInvite())
+
+		group.Put("/password/change/{id}", r.ChangePasswordForUser())
 	})
 
 	return "/auth", router
@@ -94,8 +100,8 @@ func (self *AuthRoutes) ProcessLogin() http.HandlerFunc {
 
 		if err == nil {
 			id := self.sessionService.Create(r.Context(), &models.SessionData{
-				Payload:  user.UserId,
-				Type:     "user",
+				Payload:   user.UserId,
+				Type:      "user",
 				CsrfToken: uuid.New().String(),
 			})
 
@@ -221,7 +227,7 @@ func (self *AuthRoutes) ProcessRegister() http.HandlerFunc {
 			return
 		}
 
-		err = self.authService.CreateUser(r.Context(), username, email, password)
+		err = self.authService.CreateUser(r.Context(), username, email, password, false)
 		if err != nil {
 			utils.SetNotifications(w, err, "/auth/register", self.notificationConfig.Timeout)
 			http.Redirect(w, r, url, http.StatusFound)
@@ -292,27 +298,29 @@ type tokenData struct {
 type changePasswordAnonymousData struct {
 	User      *models.User
 	TokenData *tokenData
+	CsrfToken *string
 }
 
 func (self *AuthRoutes) ChangePassword() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		user_id := r.Context().Value("user_id").(string)
+		user_id, ok := r.Context().Value("user_id").(string)
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 
 		var data changePasswordAnonymousData
-		if user_id != "" {
+		if ok && user_id != "" {
+			csrfToken := r.Context().Value("csrf_token").(string)
 			user, err := self.authService.GetUserById(r.Context(), user_id)
 			if err != nil {
 				panic(err)
 			}
 
-			data = changePasswordAnonymousData{TokenData: nil, User: user}
+			data = changePasswordAnonymousData{TokenData: nil, User: user, CsrfToken: &csrfToken }
 		} else {
 			token := r.URL.Query().Get("token")
 			userId := r.URL.Query().Get("id")
-			data = changePasswordAnonymousData{TokenData: &tokenData{token, userId}, User: nil}
+			data = changePasswordAnonymousData{TokenData: &tokenData{token, userId}, User: nil, CsrfToken: nil}
 		}
 		self.templateService.Render(
 			w,
@@ -325,8 +333,7 @@ func (self *AuthRoutes) ChangePassword() http.HandlerFunc {
 
 func (self *AuthRoutes) ProcessChangePassword() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		user_id := r.Context().Value("user_id").(string)
-		session_id := r.Context().Value("session_id").(string)
+		user_id, user_ok := r.Context().Value("user_id").(string)
 
 		newPassword := r.FormValue("new_password")
 		confirmPassword := r.FormValue("confirm_password")
@@ -334,7 +341,7 @@ func (self *AuthRoutes) ProcessChangePassword() http.HandlerFunc {
 		token := r.FormValue("token")
 		id := r.FormValue("id")
 		var url string
-		if user_id == "" {
+		if !user_ok || user_id == ""  {
 			url = fmt.Sprintf("/auth/password/change?token=%s&id=%s", token, id)
 		} else {
 			url = "/auth/password/change"
@@ -354,6 +361,7 @@ func (self *AuthRoutes) ProcessChangePassword() http.HandlerFunc {
 		if user_id != "" {
 			currentPassword := r.FormValue("current_password")
 			userCsrfToken := r.Context().Value("csrf_token").(string)
+			session_id := r.Context().Value("session_id").(string)
 			csrfToken := r.FormValue("csrf_token")
 
 			if csrfToken != userCsrfToken {
@@ -421,7 +429,32 @@ func (self *AuthRoutes) ForgotPassword() http.HandlerFunc {
 func (self *AuthRoutes) ProcessForgotPassword() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		email := r.FormValue("email")
-		self.authService.CreateForgotPasswordToken(r.Context(), email)
+
+		user, err := self.authService.GetUserByEmail(r.Context(), email)
+
+		if err == nil {
+			token := self.authService.CreateForgotPasswordToken(r.Context(), user.UserId)
+
+			buffer := bytes.Buffer{}
+			self.templateService.Render(
+				&buffer,
+				"forgot_password_email.html",
+				"layout",
+				models.NewTemplateData(models.EmailWithTokenData{
+					Token: token, 
+					Id: user.UserId,
+				}),
+			)
+
+			self.emailService.SendEmail(
+				r.Context(),
+				email,
+				"Reset your password email",
+				buffer.String(),
+			)
+		}
+
+
 		http.Redirect(w, r, "/auth/login", http.StatusFound)
 	}
 }
@@ -506,3 +539,42 @@ func (self *AuthRoutes) ProcessInvite() http.HandlerFunc {
 		http.Redirect(w, r, "/auth", http.StatusFound)
 	}
 }
+
+func (self *AuthRoutes) ChangePasswordForUser() http.HandlerFunc {
+	return func (w http.ResponseWriter, r *http.Request) {
+		usersCsrfToken := r.Context().Value("csrf_token").(string)
+		sessionId := r.Context().Value("session_id").(string)
+
+		userId := chi.URLParam(r, "id")
+		csrfToken := r.FormValue("csrf_token")
+
+		if csrfToken != usersCsrfToken {
+			utils.SetNotifications(
+				w,
+				utils.NewGenericMessage("Bad request, try again"),
+				"/user/"+userId,
+				self.notificationConfig.Timeout,
+			)
+			w.Header().Set("HX-Redirect", "/user/"+userId)
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+	
+		token := self.authService.CreateForgotPasswordToken(r.Context(), userId)
+
+		self.sessionService.UpdateCsrf(r.Context(), sessionId, uuid.New().String())
+
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		self.templateService.Render(
+			w,
+			"users_password.html",
+			"layout",
+			models.NewTemplateData(models.EmailWithTokenData{
+				Token: token,
+				Id: userId,
+			}),
+		)
+	}
+}
+
