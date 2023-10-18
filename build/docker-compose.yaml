@@ -40,7 +40,7 @@ services:
     container_name: auth_service
     build:
       context: ..
-      dockerfile: air/Dockerfile
+      dockerfile: build/air/Dockerfile
     volumes:
       - ../:/app
     environment:
@@ -52,7 +52,19 @@ services:
         condition: service_completed_successfully
       redis_store:
         condition: service_healthy
-  
+ 
+  email_service:
+    container_name: email_service
+    # image: server:latest
+    build:
+      context: ..
+      dockerfile: build/air/Dockerfile
+    volumes:
+      - ../:/app
+    environment:
+      SERVICE: mail
+    networks:
+      - main
 
   mysql_store:
     image: mysql:latest

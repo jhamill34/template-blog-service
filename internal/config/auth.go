@@ -29,6 +29,13 @@ type HashParams struct {
 	Secret      string `yaml:"secret"`
 }
 
+type EmailParams struct {
+	Domain     string `yaml:"domain"`
+	User       string `yaml:"user"`
+	SmtpDomain string `yaml:"smtp_domain"`
+	SmtpPort   int    `yaml:"smtp_port"`
+}
+
 type AuthConfig struct {
 	Server            ServerConfig             `yaml:"server"`
 	Database          DatabaseConfig           `yaml:"database"`
@@ -45,6 +52,7 @@ type AuthConfig struct {
 	InviteTTL         time.Duration            `yaml:"invite_ttl"`
 	AuthCodeTTL       time.Duration            `yaml:"auth_code_ttl"`
 	AccessToken       AccessTokenConfiguration `yaml:"access_token"`
+	Email             EmailParams              `yaml:"email"`
 }
 
 type AccessTokenConfiguration struct {

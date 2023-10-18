@@ -16,7 +16,7 @@ type OrganizationRepository struct {
 	userDao              *dao.UserDao
 	accessControlService services.AccessControlService
 	tokenService         services.TokenClaimsService
-	emailService         services.EmailService
+	emailService         services.EmailSender
 	templateService      services.TemplateService
 }
 
@@ -25,7 +25,7 @@ func NewOrganizationRepository(
 	userDao *dao.UserDao,
 	accessControlService services.AccessControlService,
 	tokenService services.TokenClaimsService,
-	emailService services.EmailService,
+	emailService services.EmailSender,
 	templateservice services.TemplateService,
 ) *OrganizationRepository {
 	return &OrganizationRepository{

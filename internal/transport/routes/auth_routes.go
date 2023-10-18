@@ -21,7 +21,7 @@ type AuthRoutes struct {
 	sessionService       services.SessionService
 	templateService      services.TemplateService
 	accessControlService services.AccessControlService
-	emailService         services.EmailService
+	emailService         services.EmailSender
 }
 
 func NewAuthRoutes(
@@ -31,7 +31,7 @@ func NewAuthRoutes(
 	sessionService services.SessionService,
 	templateService services.TemplateService,
 	accessControlService services.AccessControlService,
-	emailService services.EmailService,
+	emailService services.EmailSender,
 ) *AuthRoutes {
 	return &AuthRoutes{
 		notificationConfig:   notificationConfig,

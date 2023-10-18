@@ -19,7 +19,7 @@ type AuthRepository struct {
 	userDao               *dao.UserDao
 	passwordConfig        *config.HashParams
 	verifyTokenService    services.VerifyTokenService
-	emailService          services.EmailService
+	emailService          services.EmailSender
 	templateService       services.TemplateService
 	passwordForgotService services.VerifyTokenService
 	inviteTokenService    services.TokenClaimsService
@@ -29,7 +29,7 @@ func NewAuthRepository(
 	userDao *dao.UserDao,
 	passwordConfig *config.HashParams,
 	verifyTokenService services.VerifyTokenService,
-	emailService services.EmailService,
+	emailService services.EmailSender,
 	templateService services.TemplateService,
 	passwordForgotService services.VerifyTokenService,
 	inviteTokenService services.TokenClaimsService,

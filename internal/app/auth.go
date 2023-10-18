@@ -5,6 +5,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"fmt"
 	"io"
 	"os"
 
@@ -80,7 +81,8 @@ func ConfigureAuth() *Auth {
 		cfg.PasswordConfig,
 	)
 
-	emailService := &email.MockEmailService{}
+	smtpAddr := fmt.Sprintf("%s:%d", cfg.Email.SmtpDomain, cfg.Email.SmtpPort)
+	emailService := email.NewSmtpSender(smtpAddr, cfg.Email.User, cfg.Email.Domain)
 
 	userDao := dao.NewUserDao(db)
 	authRepo := repositories.NewAuthRepository(

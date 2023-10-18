@@ -20,5 +20,7 @@ func main() {
 		app.ConfigureApp().Start(ctx)
 	case "migration":
 		app.ConfigureMigrator().Run()
+	case "mail":
+		app.ConfigureMail().Start(ctx)
 	}
 }

@@ -62,3 +62,8 @@ session:
   # TODO: Environment Variable?
   key: SESSIONSECRET
 
+email:
+  domain: joshrasmussen.dev
+  user: admin
+  smtp_domain: email_service
+  smtp_port: 25
