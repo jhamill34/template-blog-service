@@ -188,6 +188,14 @@ func (self *OrganizationRepository) CreatePolicy(
 		panic(err)
 	}
 
+	users, err := self.organizationDao.GetUsers(ctx, orgId)
+	if err != nil {
+		panic(err)
+	}
+	for _, user := range users {
+		self.accessControlService.Invalidate(ctx, user.Id)
+	}
+
 	return nil
 }
 
@@ -204,6 +212,14 @@ func (self *OrganizationRepository) DeletePolicy(
 	err := self.organizationDao.DeletePermission(ctx, orgId, policyId)
 	if err != nil {
 		panic(err)
+	}
+	
+	users, err := self.organizationDao.GetUsers(ctx, orgId)
+	if err != nil {
+		panic(err)
+	}
+	for _, user := range users {
+		self.accessControlService.Invalidate(ctx, user.Id)
 	}
 
 	return nil

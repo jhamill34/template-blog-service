@@ -96,14 +96,16 @@ func ConfigureAuth() *Auth {
 	)
 
 	appDao := dao.NewApplicationDao(db)
+	orgDao := dao.NewOrganizationDao(db)
 
 	publisher := database.NewRedisPublisherProvider(cfg.PubSub.Addr, cfg.PubSub.Password)
 	permissionModel := config.LoadRbacModel("configs/rbac_model.conf")
+	policyProvider := rbac.NewDatabasePolicyProvider(userDao, orgDao)
 	accessControlService := rbac.NewCasbinAccessControl(
 		permissionModel,
 		kv,
 		publisher,
-		rbac.NewDatabasePolicyProvider(userDao),
+		policyProvider,
 	)
 
 	userService := repositories.NewUserRepository(userDao, accessControlService)
@@ -116,7 +118,6 @@ func ConfigureAuth() *Auth {
 		cfg.AccessToken,
 	)
 
-	orgDao := dao.NewOrganizationDao(db)
 	orgRepo := repositories.NewOrganizationRepository(
 		orgDao,
 		userDao,
@@ -156,7 +157,8 @@ func ConfigureAuth() *Auth {
 			routes.NewPolicyRoutes(
 				sessionStore,
 				signer,
-				userService,
+				accessControlService,
+				policyProvider,
 			),
 			routes.NewOrganizationRoutes(
 				cfg.Notifications,

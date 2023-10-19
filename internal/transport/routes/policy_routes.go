@@ -4,27 +4,30 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/jhamill34/notion-provisioner/internal/models"
 	"github.com/jhamill34/notion-provisioner/internal/services"
+	"github.com/jhamill34/notion-provisioner/internal/services/rbac"
 	"github.com/jhamill34/notion-provisioner/internal/transport/middleware"
 	"github.com/jhamill34/notion-provisioner/internal/transport/utils"
 )
 
 type PolicyRoutes struct {
-	sessionService services.SessionService
-	signer         services.Signer
-	userService    services.UserService
+	sessionService       services.SessionService
+	signer               services.Signer
+	accessControlService services.AccessControlService
+	policyProvider       rbac.PolicyProvider
 }
 
 func NewPolicyRoutes(
 	sessionService services.SessionService,
 	signer services.Signer,
-	userService services.UserService,
+	accessControlService services.AccessControlService,
+	policyProvider rbac.PolicyProvider,
 ) *PolicyRoutes {
 	return &PolicyRoutes{
-		sessionService: sessionService,
-		signer:         signer,
-		userService:    userService,
+		sessionService:       sessionService,
+		signer:               signer,
+		accessControlService: accessControlService,
+		policyProvider:       policyProvider,
 	}
 }
 
@@ -43,18 +46,15 @@ func (self *PolicyRoutes) ListMyPolicies() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userId := r.Context().Value("user_id").(string)
 
-		policies, err := self.userService.ListPolicies(r.Context(), userId)
-		if err == services.AccessDenied {
+		if err := self.accessControlService.Enforce(r.Context(), "/user/"+userId+"/policy", "list"); err != nil {
 			utils.RenderJSON(w, err, http.StatusForbidden)
 			return
 		}
 
+		response, err := self.policyProvider.GetPolicies(r.Context(), userId)
 		if err != nil {
-			panic(err)
-		}
-
-		response := models.PolicyResponse{
-			User: policies,
+			utils.RenderJSON(w, err, http.StatusInternalServerError)
+			return
 		}
 
 		utils.RenderJSON(w, response, http.StatusOK)

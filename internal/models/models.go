@@ -16,7 +16,13 @@ type AccessTokenClaims struct {
 }
 
 type PolicyResponse struct {
-	User []Policy `json:"user"`
+	User []Policy            `json:"user"`
+	Org  []OrgPolicyResponse `json:"org"`
+}
+
+type OrgPolicyResponse struct {
+	OrgId  string   `json:"org_id"`
+	Policy []Policy `json:"policy"`
 }
 
 type AccessTokenResponse struct {

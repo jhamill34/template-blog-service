@@ -10,18 +10,22 @@ import (
 )
 
 type DatabasePolicyProvider struct {
-	dao *dao.UserDao
+	userDao *dao.UserDao
+	orgDao  *dao.OrganizationDao
 }
 
-func NewDatabasePolicyProvider(dao *dao.UserDao) *DatabasePolicyProvider {
-	return &DatabasePolicyProvider{dao}
+func NewDatabasePolicyProvider(
+	userDao *dao.UserDao,
+	orgDao *dao.OrganizationDao,
+) *DatabasePolicyProvider {
+	return &DatabasePolicyProvider{userDao, orgDao}
 }
 
 func (self *DatabasePolicyProvider) GetPolicies(
 	ctx context.Context,
 	id string,
 ) (models.PolicyResponse, error) {
-	data, err := self.dao.GetPermissions(ctx, id)
+	data, err := self.userDao.GetPermissions(ctx, id)
 	if err != nil {
 		return models.PolicyResponse{}, err
 	}
@@ -36,8 +40,37 @@ func (self *DatabasePolicyProvider) GetPolicies(
 		}
 	}
 
+	orgData, err := self.orgDao.ListUsersOrgs(ctx, id)
+	if err != nil {
+		return models.PolicyResponse{}, err
+	}
+
+	orgs := make([]models.OrgPolicyResponse, len(orgData))
+	for i, org := range orgData {
+		orgPolicyData, err := self.orgDao.GetPermissions(ctx, org.Id)
+		if err != nil {
+			return models.PolicyResponse{}, err
+		}
+
+		orgPolicies := make([]models.Policy, len(orgPolicyData))
+		for i, policy := range orgPolicyData {
+			orgPolicies[i] = models.Policy{
+				PolicyId: policy.Id,
+				Resource: policy.Resource,
+				Action:   policy.Action,
+				Effect:   policy.Effect,
+			}
+		}
+
+		orgs[i] = models.OrgPolicyResponse{
+			OrgId:  org.Id,
+			Policy: orgPolicies,
+		}
+	}
+
 	return models.PolicyResponse{
 		User: policies,
+		Org: orgs,
 	}, nil
 }
 

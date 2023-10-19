@@ -94,8 +94,26 @@ func (self *CasbinAccessControl) makeEnforcer(
 	e.EnableLog(true)
 
 	userPrinciple := fmt.Sprintf("u_%s", id)
+	e.AddPolicy(userPrinciple, "/user/"+id+"/*", "read", "allow")
+	e.AddPolicy(userPrinciple, "/user/"+id+"/*", "list", "allow")
+	e.AddPolicy(userPrinciple, "/user/"+id, "read", "allow")
+
 	for _, permission := range policy.User {
 		e.AddPolicy(userPrinciple, permission.Resource, permission.Action, permission.Effect)
+	}
+
+	e.AddPolicy(userPrinciple, "/org", "list", "allow")
+	for _, org := range policy.Org {
+		orgPrinciple := fmt.Sprintf("o_%s", org.OrgId)
+		e.AddRoleForUser(userPrinciple, orgPrinciple)
+
+		e.AddPolicy(orgPrinciple, "/org/"+org.OrgId+"/*", "read", "allow")
+		e.AddPolicy(orgPrinciple, "/org/"+org.OrgId+"/*", "list", "allow")
+		e.AddPolicy(orgPrinciple, "/org/"+org.OrgId, "read", "allow")
+
+		for _, permission := range org.Policy {
+			e.AddPolicy(orgPrinciple, permission.Resource, permission.Action, permission.Effect)
+		}
 	}
 
 	return e

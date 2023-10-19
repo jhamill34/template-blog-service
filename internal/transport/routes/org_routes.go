@@ -288,6 +288,8 @@ func (self *OrganizationRoutes) CreateOrgPolicy() http.HandlerFunc {
 		userCsrfToken := r.Context().Value("csrf_token").(string)
 		orgId := chi.URLParam(r, "id")
 
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
 		self.templateService.Render(
 			w,
 			"org_policy_create.html",
@@ -407,7 +409,7 @@ func (self *OrganizationRoutes) ListOrgUsers() http.HandlerFunc {
 				self.notificationConfig.Timeout,
 			)
 			http.Redirect(w, r, "/org/"+orgId, http.StatusFound)
-			return 
+			return
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -493,7 +495,6 @@ func (self *OrganizationRoutes) JoinOrg() http.HandlerFunc {
 
 		token := r.URL.Query().Get("token")
 		tokenId := r.URL.Query().Get("token_id")
-
 
 		err := self.orgService.Join(r.Context(), tokenId, token, userId)
 		if err != nil {
