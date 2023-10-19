@@ -36,13 +36,8 @@ services:
         condition: service_healthy
   
   auth_service:
-    # image: server:latest
+    image: server:latest
     container_name: auth_service
-    build:
-      context: ..
-      dockerfile: build/air/Dockerfile
-    volumes:
-      - ../:/app
     environment:
       SERVICE: auth
     networks:
@@ -55,12 +50,7 @@ services:
  
   email_service:
     container_name: email_service
-    # image: server:latest
-    build:
-      context: ..
-      dockerfile: build/air/Dockerfile
-    volumes:
-      - ../:/app
+    image: server:latest
     environment:
       SERVICE: mail
     networks:
