@@ -319,7 +319,7 @@ func formatDkimHeader(params map[string]string) (string, error) {
 		header += line
 	}
 
-	sig, err := foldSignature(signature)
+	sig, err := foldSignature("b="+signature)
 	if err != nil {
 		return "", err
 	}

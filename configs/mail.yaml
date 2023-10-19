@@ -1,6 +1,12 @@
 port: 25
 protocol: tcp4
 
+read_timeout: 60s
+write_timeout: 60s
+data_timeout: 5m
+max_message_size: 10240000
+max_recipients: 100
+
 dkim:
   selector: dkim2
   domain: joshrasmussen.dev

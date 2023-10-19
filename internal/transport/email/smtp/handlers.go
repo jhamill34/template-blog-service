@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/mail"
 	"strings"
+	"time"
 
 	"github.com/jhamill34/notion-provisioner/internal/models"
 	"github.com/jhamill34/notion-provisioner/internal/services"
@@ -158,6 +159,13 @@ func (self *SmtpHandler) Recipient(r *email.Request, w email.ResponseWriter) {
 	}
 
 	recipients := RecipientFromContext(r.Context())
+	if len(recipients) >= r.Config().MaxRecipients {
+		w.WriteResponse(email.Response{
+			Code: 452, 
+			Message: "Too many recipients",
+		})
+		return
+	}
 
 	parsedAddr, err := mail.ParseAddress(parts[1])
 	if err != nil {
@@ -191,9 +199,10 @@ func (self *SmtpHandler) Data(r *email.Request, w email.ResponseWriter) {
 		Code:    354,
 		Message: "Go ahead. End your data with <CR><LF>.<CR><LF>",
 	})
+	w.SetDeadline(time.Now().Add(r.Config().DataTimeout))
 
 	// TODO: configure max size
-	data, err := r.Body(1024)
+	data, err := r.Body()
 	if err == email.ErrMaxBodyLength {
 		w.WriteResponse(email.Response{
 			Code:    552,

@@ -38,8 +38,7 @@ func ConfigureMail() *MailService {
 				),
 			),
 			nil,
-			cfg.Protocol,
-			cfg.Port,
+			cfg,
 		),
 	}
 }

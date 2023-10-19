@@ -13,28 +13,28 @@ import (
 	"net/textproto"
 	"strings"
 	"time"
+
+	"github.com/jhamill34/notion-provisioner/internal/config"
 )
 
 type EmailServer struct {
-	router              *CommandRouter
-	tlsConfig           *tls.Config
-	port int
-	protocol string
+	router    *CommandRouter
+	tlsConfig *tls.Config
+	config    config.MailerConfig
 }
 
 func NewEmailServer(
 	router *CommandRouter,
 	tlsConfig *tls.Config,
-	protocol string,
-	port int,
+	config config.MailerConfig,
 ) *EmailServer {
-	return &EmailServer{router, tlsConfig, port, protocol}
+	return &EmailServer{router, tlsConfig, config}
 }
 
 func (s *EmailServer) Start(ctx context.Context) {
-	port := fmt.Sprintf(":%d", s.port)
+	port := fmt.Sprintf(":%d", s.config.Port)
 
-	listener, err := net.Listen(s.protocol, port)
+	listener, err := net.Listen(s.config.Protocol, port)
 	if err != nil {
 		panic(err)
 	}
@@ -55,7 +55,7 @@ func (s *EmailServer) Start(ctx context.Context) {
 func (s *EmailServer) HandleConnection(ctx context.Context, conn net.Conn) {
 	defer conn.Close()
 
-	session := NewSession(ctx, conn, false)
+	session := NewSession(ctx, conn, false, &s.config)
 	session.WriteResponse(Response{
 		Code:    220,
 		Message: "email_service ESMTP ready",
@@ -113,13 +113,14 @@ func (s *EmailServer) UpgradeTLS(ctx context.Context, conn net.Conn, session *Se
 		return false
 	}
 
-	*session = *NewSession(ctx, tlsConn, true)
+	*session = *NewSession(ctx, tlsConn, true, &s.config)
 
 	return true
 }
 
 type ResponseWriter interface {
 	WriteResponse(response Response)
+	SetDeadline(t time.Time)
 	Close()
 }
 
@@ -159,10 +160,17 @@ type Session struct {
 	writer  *bufio.Writer
 	scanner *bufio.Scanner
 
+	config *config.MailerConfig
+
 	tls bool
 }
 
-func NewSession(ctx context.Context, conn net.Conn, tls bool) *Session {
+func NewSession(
+	ctx context.Context,
+	conn net.Conn,
+	tls bool,
+	config *config.MailerConfig,
+) *Session {
 	reader := bufio.NewReader(conn)
 	scanner := bufio.NewScanner(reader)
 	writer := bufio.NewWriter(conn)
@@ -173,6 +181,7 @@ func NewSession(ctx context.Context, conn net.Conn, tls bool) *Session {
 		reader:  reader,
 		writer:  writer,
 		scanner: scanner,
+		config:  config,
 		tls:     tls,
 	}
 }
@@ -183,6 +192,8 @@ type Request struct {
 	verb       string
 	args       []string
 	reader     *bufio.Reader
+
+	config *config.MailerConfig
 }
 
 func RequestFromString(
@@ -190,6 +201,7 @@ func RequestFromString(
 	rstCtx context.Context,
 	cmd string,
 	reader *bufio.Reader,
+	config *config.MailerConfig,
 ) (Request, error) {
 	fields := strings.Fields(cmd)
 
@@ -208,6 +220,7 @@ func RequestFromString(
 			verb:       verb,
 			args:       args,
 			reader:     reader,
+			config:     config,
 		}, nil
 	}
 
@@ -234,13 +247,17 @@ func (c *Request) Args() []string {
 	return c.args
 }
 
+func (c *Request) Config() *config.MailerConfig {
+	return c.config
+}
+
 var ErrMaxBodyLength = errors.New("Maximum body length exceeded.")
 
-func (c *Request) Body(maxLength int) ([]byte, error) {
+func (c *Request) Body() ([]byte, error) {
 	buffer := bytes.Buffer{}
 	reader := textproto.NewReader(c.reader).DotReader()
 
-	_, err := io.CopyN(&buffer, reader, int64(maxLength))
+	_, err := io.CopyN(&buffer, reader, int64(c.config.MaxMessageSize))
 
 	if err == io.EOF {
 		return buffer.Bytes(), nil
@@ -268,7 +285,7 @@ func (s *Session) NextCommand(ctx context.Context) (Request, error) {
 	}
 
 	line := s.scanner.Text()
-	return RequestFromString(ctx, s.ctx, line, s.reader)
+	return RequestFromString(ctx, s.ctx, line, s.reader, s.config)
 }
 
 type Response struct {
@@ -283,7 +300,13 @@ func (r Response) String() string {
 func (s *Session) WriteResponse(response Response) {
 	s.writer.WriteString(response.String())
 	log.Printf("Response: %s", response.String())
+	s.conn.SetWriteDeadline(time.Now().Add(s.config.WriteTimeout))
 	s.writer.Flush()
+	s.conn.SetReadDeadline(time.Now().Add(s.config.ReadTimeout))
+}
+
+func (s *Session) SetDeadline(t time.Time) {
+	s.conn.SetDeadline(t)
 }
 
 func (s *Session) Close() {
