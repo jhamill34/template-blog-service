@@ -5,4 +5,3 @@
 
 ## Bugs
 - [ ] Email server crashes on panic
-- [ ] Email sending should be async to not block page loads

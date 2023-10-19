@@ -212,7 +212,8 @@ func (self *SmtpHandler) Data(r *email.Request, w email.ResponseWriter) {
 		Recipients: RecipientFromContext(r.Context()),
 		Data:       data,
 	}
-	self.messageHandler.HandleMessage(r.Context(), &envelope)
+
+	go self.messageHandler.HandleMessage(r.Context(), &envelope)
 
 	w.WriteResponse(email.Response{
 		Code:    250,
