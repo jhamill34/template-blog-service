@@ -44,6 +44,11 @@ func (self *PolicyRoutes) ListMyPolicies() http.HandlerFunc {
 		userId := r.Context().Value("user_id").(string)
 
 		policies, err := self.userService.ListPolicies(r.Context(), userId)
+		if err == services.AccessDenied {
+			utils.RenderJSON(w, err, http.StatusForbidden)
+			return
+		}
+
 		if err != nil {
 			panic(err)
 		}

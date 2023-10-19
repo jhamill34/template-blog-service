@@ -3,6 +3,7 @@ package repositories
 import (
 	"bytes"
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jhamill34/notion-provisioner/internal/database"
@@ -42,6 +43,10 @@ func (self *OrganizationRepository) ListUsersOrgs(
 	ctx context.Context,
 	userId string,
 ) ([]models.Organization, models.Notifier) {
+	if err := self.accessControlService.Enforce(ctx, "/org", "list"); err != nil {
+		return nil, err
+	}
+
 	data, err := self.organizationDao.ListUsersOrgs(ctx, userId)
 	if err != nil {
 		panic(err)
@@ -51,14 +56,17 @@ func (self *OrganizationRepository) ListUsersOrgs(
 
 	i := 0
 	for _, org := range data {
-		orgs[i] = models.Organization{
-			OrgId:       org.Id,
-			Name:        org.Name,
-			Description: org.Description,
+		if err := self.accessControlService.Enforce(ctx, "/org/"+org.Id, "read"); err == nil {
+			orgs[i] = models.Organization{
+				OrgId:       org.Id,
+				Name:        org.Name,
+				Description: org.Description,
+			}
+			i++
 		}
 	}
 
-	return orgs, nil
+	return orgs[:i], nil
 }
 
 // CreateOrganization implements services.OrganizationService.
@@ -66,6 +74,10 @@ func (self *OrganizationRepository) CreateOrganization(
 	ctx context.Context,
 	userId, name, description string,
 ) models.Notifier {
+	if err := self.accessControlService.Enforce(ctx, "/org", "create"); err != nil {
+		return err
+	}
+
 	orgId := uuid.New().String()
 
 	_, err := self.organizationDao.CreateOrganization(ctx, orgId, name, description)
@@ -86,6 +98,10 @@ func (self *OrganizationRepository) GetOrganizationBydId(
 	ctx context.Context,
 	id string,
 ) (*models.Organization, models.Notifier) {
+	if err := self.accessControlService.Enforce(ctx, "/org/"+id, "read"); err != nil {
+		return nil, err
+	}
+
 	org, err := self.organizationDao.FindById(ctx, id)
 	if err == database.NotFound {
 		return nil, services.OrganizationNotFound
@@ -107,6 +123,10 @@ func (self *OrganizationRepository) DeleteOrganization(
 	ctx context.Context,
 	id string,
 ) models.Notifier {
+	if err := self.accessControlService.Enforce(ctx, "/org/"+id, "delete"); err != nil {
+		return err
+	}
+
 	err := self.organizationDao.RemoveAllUsers(ctx, id)
 	if err != nil {
 		panic(err)
@@ -129,6 +149,10 @@ func (self *OrganizationRepository) ListPolicies(
 	ctx context.Context,
 	id string,
 ) ([]models.Policy, models.Notifier) {
+	if err := self.accessControlService.Enforce(ctx, "/org/"+id+"/policy", "list"); err != nil {
+		return nil, err
+	}
+
 	permissions, err := self.organizationDao.GetPermissions(ctx, id)
 	if err != nil {
 		panic(err)
@@ -155,6 +179,10 @@ func (self *OrganizationRepository) CreatePolicy(
 	action string,
 	effect string,
 ) models.Notifier {
+	if err := self.accessControlService.Enforce(ctx, "/org/"+orgId+"/policy", "create"); err != nil {
+		return err
+	}
+
 	err := self.organizationDao.CreatePermission(ctx, orgId, resource, action, effect)
 	if err != nil {
 		panic(err)
@@ -169,6 +197,10 @@ func (self *OrganizationRepository) DeletePolicy(
 	orgId string,
 	policyId int,
 ) models.Notifier {
+	if err := self.accessControlService.Enforce(ctx, fmt.Sprintf("/org/%s/policy/%d", orgId, policyId), "delete"); err != nil {
+		return err
+	}
+
 	err := self.organizationDao.DeletePermission(ctx, orgId, policyId)
 	if err != nil {
 		panic(err)
@@ -186,21 +218,29 @@ func (self *OrganizationRepository) ListUsers(
 	ctx context.Context,
 	orgId string,
 ) ([]models.User, models.Notifier) {
+	if err := self.accessControlService.Enforce(ctx, "/org/"+orgId+"/user", "list"); err != nil {
+		return nil, err
+	}
+
 	data, err := self.organizationDao.GetUsers(ctx, orgId)
 	if err != nil {
 		panic(err)
 	}
 
 	users := make([]models.User, len(data))
-	for i := 0; i < len(users); i++ {
-		users[i] = models.User{
-			UserId: data[i].Id,
-			Name:   data[i].Name,
-			Email:  data[i].Email,
+	i := 0
+	for _, user := range data {
+		if err := self.accessControlService.Enforce(ctx, "/user/"+user.Id, "read"); err == nil && user.Name != "ROOT" {
+			users[i] = models.User{
+				UserId: user.Id,
+				Name:   user.Name,
+				Email:  user.Email,
+			}
+			i++
 		}
 	}
 
-	return users, nil
+	return users[:i], nil
 }
 
 // AddUser implements services.OrganizationService.
@@ -209,6 +249,10 @@ func (self *OrganizationRepository) InviteUser(
 	orgId string,
 	email string,
 ) models.Notifier {
+	if err := self.accessControlService.Enforce(ctx, "/org/"+orgId+"/user", "create"); err != nil {
+		return err
+	}
+
 	org, err := self.GetOrganizationBydId(ctx, orgId)
 	if err != nil {
 		return err
@@ -289,6 +333,10 @@ func (self *OrganizationRepository) RemoveUser(
 	orgId string,
 	userId string,
 ) models.Notifier {
+	if err := self.accessControlService.Enforce(ctx, "/org/"+orgId+"/user/"+userId, "delete"); err != nil {
+		return err
+	}
+
 	err := self.organizationDao.RemoveUser(ctx, orgId, userId)
 	if err != nil {
 		panic(err)

@@ -81,6 +81,7 @@ func (self *OrganizationRoutes) ListMyOrgs() http.HandlerFunc {
 				"/auth",
 				self.notificationConfig.Timeout,
 			)
+			http.Redirect(w, r, "/auth", http.StatusFound)
 			return
 		}
 
