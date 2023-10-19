@@ -10,6 +10,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/smtp"
 	"net/textproto"
@@ -36,11 +37,13 @@ func (f *EmailForwarder) HandleMessage(ctx context.Context, message *models.Enve
 
 		client, err := makeClient(f.ports, domain)
 		if err != nil {
-			panic(err)
+			log.Println(err)
+			continue
 		}
 
 		if err := forward(client, message, f.signingOptions); err != nil {
-			panic(err)
+			log.Println(err)
+			continue
 		}
 	}
 }
@@ -131,9 +134,9 @@ func NewSigner(options SigningOptions) *Signer {
 	return s
 }
 
-func (s *Signer) Signature() string {
+func (s *Signer) Signature() (string, error) {
 	if s.signatureFields == nil {
-		return ""
+		return "", nil
 	}
 
 	return formatDkimHeader(s.signatureFields)
@@ -201,7 +204,12 @@ func (s *Signer) signRoutine(data io.Reader, done chan<- error, options SigningO
 			}
 		}
 	}
-	dkimHeader := formatDkimHeader(fields)
+	dkimHeader, err := formatDkimHeader(fields)
+	if err != nil {
+		done <- err
+		return
+	}
+
 	canonDkimHeader := strings.Trim(canonicalizeHeader(dkimHeader), "\r\n")
 	io.WriteString(hasher, canonDkimHeader)
 	allHashed := hasher.Sum(nil)
@@ -216,7 +224,7 @@ func (s *Signer) signRoutine(data io.Reader, done chan<- error, options SigningO
 	s.signatureFields = fields
 }
 
-func Sign(input io.Reader, output io.Writer, options SigningOptions) {
+func Sign(input io.Reader, output io.Writer, options SigningOptions) error {
 	var buffer bytes.Buffer
 	signer := NewSigner(options)
 
@@ -224,26 +232,33 @@ func Sign(input io.Reader, output io.Writer, options SigningOptions) {
 
 	_, err := io.Copy(writer, input)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	err = signer.Close()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
-	_, err = io.WriteString(output, signer.Signature())
+	sig, err := signer.Signature()
 	if err != nil {
-		panic(err)
+		return err
+	}
+
+	_, err = io.WriteString(output, sig)
+	if err != nil {
+		return err
 	}
 
 	_, err = io.Copy(output, &buffer)
 	if err != nil {
-		panic(err)
+		return err
 	}
+
+	return nil
 }
 
-func foldSignature(signature string) (result string) {
+func foldSignature(signature string) (result string, err error) {
 	buffer := bytes.NewBufferString(signature)
 
 	line := make([]byte, 75)
@@ -254,7 +269,7 @@ func foldSignature(signature string) (result string) {
 		}
 
 		if err != nil {
-			panic(err)
+			return "", err
 		}
 
 		if n == 0 {
@@ -268,10 +283,10 @@ func foldSignature(signature string) (result string) {
 		result += string(line[:n])
 	}
 
-	return result
+	return result, nil
 }
 
-func formatDkimHeader(params map[string]string) string {
+func formatDkimHeader(params map[string]string) (string, error) {
 	header := "DKIM-Signature:"
 
 	signature := ""
@@ -304,9 +319,13 @@ func formatDkimHeader(params map[string]string) string {
 		header += line
 	}
 
-	header += "\r\n " + foldSignature("b="+signature)
+	sig, err := foldSignature(signature)
+	if err != nil {
+		return "", err
+	}
+	header += "\r\n " + sig
 
-	return header + "\r\n"
+	return header + "\r\n", nil
 }
 
 func canonicalizeHeader(header string) string {
