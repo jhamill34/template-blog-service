@@ -344,6 +344,7 @@ func (self *OrganizationRepository) Join(
 	}
 
 	self.tokenService.Destroy(ctx, tokenId)
+	self.accessControlService.Invalidate(ctx, userId)
 
 	return nil
 }
@@ -362,6 +363,8 @@ func (self *OrganizationRepository) RemoveUser(
 	if err != nil {
 		panic(err)
 	}
+	
+	self.accessControlService.Invalidate(ctx, userId)
 
 	return nil
 }
