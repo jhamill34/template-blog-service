@@ -11,10 +11,11 @@ type ServerConfig struct {
 	IdleTimeout  time.Duration `yaml:"idle_timeout"`
 	ReadTimeout  time.Duration `yaml:"read_timeout"`
 	WriteTimeout time.Duration `yaml:"write_timeout"`
+	BaseUrl      string        `yaml:"base_url"`
 }
 
 type DatabaseConfig struct {
-	Path       string   `yaml:"path"`
+	Path string `yaml:"path"`
 }
 
 type RedisConfig struct {

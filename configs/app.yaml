@@ -3,6 +3,7 @@ server:
   idle_timeout: 60s
   read_timeout: 1s
   write_timeout: 2s
+  base_url: https://api.spedue.com
 
 cache:
   address: redis_store:6379

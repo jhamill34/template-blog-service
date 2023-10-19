@@ -13,6 +13,7 @@ import (
 )
 
 type OrganizationRepository struct {
+	baseUrl              string
 	organizationDao      *dao.OrganizationDao
 	userDao              *dao.UserDao
 	accessControlService services.AccessControlService
@@ -22,6 +23,7 @@ type OrganizationRepository struct {
 }
 
 func NewOrganizationRepository(
+	baseUrl string,
 	organizationDao *dao.OrganizationDao,
 	userDao *dao.UserDao,
 	accessControlService services.AccessControlService,
@@ -30,6 +32,7 @@ func NewOrganizationRepository(
 	templateservice services.TemplateService,
 ) *OrganizationRepository {
 	return &OrganizationRepository{
+		baseUrl:              baseUrl,
 		organizationDao:      organizationDao,
 		userDao:              userDao,
 		accessControlService: accessControlService,
@@ -213,7 +216,7 @@ func (self *OrganizationRepository) DeletePolicy(
 	if err != nil {
 		panic(err)
 	}
-	
+
 	users, err := self.organizationDao.GetUsers(ctx, orgId)
 	if err != nil {
 		panic(err)
@@ -246,7 +249,8 @@ func (self *OrganizationRepository) ListUsers(
 	users := make([]models.User, len(data))
 	i := 0
 	for _, user := range data {
-		if err := self.accessControlService.Enforce(ctx, "/user/"+user.Id, "read"); err == nil && user.Name != "ROOT" {
+		if err := self.accessControlService.Enforce(ctx, "/user/"+user.Id, "read"); err == nil &&
+			user.Name != "ROOT" {
 			users[i] = models.User{
 				UserId: user.Id,
 				Name:   user.Name,
@@ -295,8 +299,9 @@ func (self *OrganizationRepository) InviteUser(
 
 	buffer := bytes.Buffer{}
 	data := models.EmailWithTokenData{
-		Token: token,
-		Id:    newId,
+		BaseUrl: self.baseUrl,
+		Token:   token,
+		Id:      newId,
 	}
 	self.templateService.Render(
 		&buffer,

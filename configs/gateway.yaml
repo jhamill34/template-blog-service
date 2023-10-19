@@ -3,6 +3,7 @@ server:
   idle_timeout: 60s
   read_timeout: 1s
   write_timeout: 2s
+  base_url: https://app.spedue.com
 
 cache:
   address: redis_store:6379
@@ -19,7 +20,6 @@ notifications:
 external_auth_server: https://auth.spedue.com
 auth_server: http://auth_service
 app_server: app_service
-base_url: https://app.spedue.com
 
 oauth:
   client_id: "efae5523-7585-4eae-8f4d-97897e0626f4"

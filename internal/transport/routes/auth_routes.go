@@ -15,6 +15,7 @@ import (
 )
 
 type AuthRoutes struct {
+	baseUrl              string
 	notificationConfig   config.NotificationsConfig
 	sessionConfig        config.SessionConfig
 	authService          services.AuthService
@@ -25,6 +26,7 @@ type AuthRoutes struct {
 }
 
 func NewAuthRoutes(
+	baseUrl string,
 	notificationConfig config.NotificationsConfig,
 	sessionConfig config.SessionConfig,
 	authService services.AuthService,
@@ -34,6 +36,7 @@ func NewAuthRoutes(
 	emailService services.EmailSender,
 ) *AuthRoutes {
 	return &AuthRoutes{
+		baseUrl:              baseUrl,
 		notificationConfig:   notificationConfig,
 		sessionConfig:        sessionConfig,
 		authService:          authService,
@@ -316,7 +319,7 @@ func (self *AuthRoutes) ChangePassword() http.HandlerFunc {
 				panic(err)
 			}
 
-			data = changePasswordAnonymousData{TokenData: nil, User: user, CsrfToken: &csrfToken }
+			data = changePasswordAnonymousData{TokenData: nil, User: user, CsrfToken: &csrfToken}
 		} else {
 			token := r.URL.Query().Get("token")
 			userId := r.URL.Query().Get("id")
@@ -341,7 +344,7 @@ func (self *AuthRoutes) ProcessChangePassword() http.HandlerFunc {
 		token := r.FormValue("token")
 		id := r.FormValue("id")
 		var url string
-		if !user_ok || user_id == ""  {
+		if !user_ok || user_id == "" {
 			url = fmt.Sprintf("/auth/password/change?token=%s&id=%s", token, id)
 		} else {
 			url = "/auth/password/change"
@@ -441,8 +444,9 @@ func (self *AuthRoutes) ProcessForgotPassword() http.HandlerFunc {
 				"forgot_password_email.html",
 				"layout",
 				models.NewTemplateData(models.EmailWithTokenData{
-					Token: token, 
-					Id: user.UserId,
+					BaseUrl: self.baseUrl,
+					Token:   token,
+					Id:      user.UserId,
 				}),
 			)
 
@@ -453,7 +457,6 @@ func (self *AuthRoutes) ProcessForgotPassword() http.HandlerFunc {
 				buffer.String(),
 			)
 		}
-
 
 		http.Redirect(w, r, "/auth/login", http.StatusFound)
 	}
@@ -541,7 +544,7 @@ func (self *AuthRoutes) ProcessInvite() http.HandlerFunc {
 }
 
 func (self *AuthRoutes) ChangePasswordForUser() http.HandlerFunc {
-	return func (w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
 		usersCsrfToken := r.Context().Value("csrf_token").(string)
 		sessionId := r.Context().Value("session_id").(string)
 
@@ -559,7 +562,7 @@ func (self *AuthRoutes) ChangePasswordForUser() http.HandlerFunc {
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
-	
+
 		token := self.authService.CreateForgotPasswordToken(r.Context(), userId)
 
 		self.sessionService.UpdateCsrf(r.Context(), sessionId, uuid.New().String())
@@ -571,10 +574,10 @@ func (self *AuthRoutes) ChangePasswordForUser() http.HandlerFunc {
 			"users_password.html",
 			"layout",
 			models.NewTemplateData(models.EmailWithTokenData{
-				Token: token,
-				Id: userId,
+				BaseUrl: self.baseUrl,
+				Token:   token,
+				Id:      userId,
 			}),
 		)
 	}
 }
-

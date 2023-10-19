@@ -16,6 +16,7 @@ import (
 const ROOT_NAME = "ROOT"
 
 type AuthRepository struct {
+	baseUrl               string
 	userDao               *dao.UserDao
 	passwordConfig        *config.HashParams
 	verifyTokenService    services.VerifyTokenService
@@ -26,6 +27,7 @@ type AuthRepository struct {
 }
 
 func NewAuthRepository(
+	baseUrl string,
 	userDao *dao.UserDao,
 	passwordConfig *config.HashParams,
 	verifyTokenService services.VerifyTokenService,
@@ -35,6 +37,7 @@ func NewAuthRepository(
 	inviteTokenService services.TokenClaimsService,
 ) *AuthRepository {
 	return &AuthRepository{
+		baseUrl:               baseUrl,
 		userDao:               userDao,
 		passwordConfig:        passwordConfig,
 		verifyTokenService:    verifyTokenService,
@@ -81,7 +84,10 @@ func (repo *AuthRepository) LoginUser(
 	}, nil
 }
 
-func (repo *AuthRepository) GetUserByEmail(ctx context.Context, email string) (*models.User, models.Notifier) {
+func (repo *AuthRepository) GetUserByEmail(
+	ctx context.Context,
+	email string,
+) (*models.User, models.Notifier) {
 	user, err := repo.userDao.FindByEmail(ctx, email)
 
 	if err == database.NotFound {
@@ -194,7 +200,6 @@ func (repo *AuthRepository) ResendVerifyEmail(
 	return nil
 }
 
-
 func (repo *AuthRepository) sendVerifyEmail(
 	ctx context.Context,
 	user *database.UserEntity,
@@ -203,8 +208,9 @@ func (repo *AuthRepository) sendVerifyEmail(
 
 	buffer := bytes.Buffer{}
 	data := models.EmailWithTokenData{
-		Token: token, 
-		Id: user.Id,
+		BaseUrl: repo.baseUrl,
+		Token:   token,
+		Id:      user.Id,
 	}
 	repo.templateService.Render(
 		&buffer,
@@ -342,8 +348,9 @@ func (repo *AuthRepository) InviteUser(
 
 	buffer := bytes.Buffer{}
 	data := models.EmailWithTokenData{
-		Token: token, 
-		Id: newId,
+		BaseUrl: repo.baseUrl,
+		Token:   token,
+		Id:      newId,
 	}
 	repo.templateService.Render(
 		&buffer,

@@ -86,6 +86,7 @@ func ConfigureAuth() *Auth {
 
 	userDao := dao.NewUserDao(db)
 	authRepo := repositories.NewAuthRepository(
+		cfg.Server.BaseUrl,
 		userDao,
 		cfg.PasswordConfig,
 		verifyTokenRepository,
@@ -119,6 +120,7 @@ func ConfigureAuth() *Auth {
 	)
 
 	orgRepo := repositories.NewOrganizationRepository(
+		cfg.Server.BaseUrl,
 		orgDao,
 		userDao,
 		accessControlService,
@@ -131,6 +133,7 @@ func ConfigureAuth() *Auth {
 		server: transport.NewServer(
 			cfg.Server,
 			routes.NewAuthRoutes(
+				cfg.Server.BaseUrl,
 				cfg.Notifications,
 				cfg.Session,
 				authRepo,

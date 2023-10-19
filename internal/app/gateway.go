@@ -48,7 +48,7 @@ func ConfigureGateway() *Gateway {
 				cfg.ExternalAuthServer,
 				cfg.AppServer,
 				cfg.Notifications,
-				cfg.BaseUrl,
+				cfg.Server.BaseUrl,
 			),
 		),
 		cleanup: func(ctx context.Context) {

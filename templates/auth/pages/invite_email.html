@@ -3,7 +3,7 @@
 <div>
 	<p>You've been invited! Click the link below to register</p>
 
-	<p><a href="/auth/register?token={{ .Token }}&id={{ .Id }}">Register</a></p>
+	<p><a href="{{ .BaseUrl }}/auth/register?token={{ .Token }}&id={{ .Id }}">Register</a></p>
 </div>
 {{ end }}
 {{ end }}

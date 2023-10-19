@@ -26,6 +26,7 @@ type InviteData struct {
 }
 
 type EmailWithTokenData struct {
-	Token string `json:"token"`
-	Id    string `json:"id"`
+	BaseUrl string `json:"base_url"`
+	Token   string `json:"token"`
+	Id      string `json:"id"`
 }

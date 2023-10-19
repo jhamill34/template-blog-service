@@ -3,7 +3,7 @@
 <div>
 	<p>Please verify your email address by clicking on the link below.</p>
 
-	<p><a href="/auth/verify?token={{ .Token }}&id={{ .Id }}">Verify Email</a></p>
+	<p><a href="{{ .BaseUrl }}/auth/verify?token={{ .Token }}&id={{ .Id }}">Verify Email</a></p>
 </div>
 {{ end }}
 {{ end }}

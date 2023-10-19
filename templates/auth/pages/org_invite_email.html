@@ -4,7 +4,7 @@
 	<p>You've been invited to join {{ .Name }}! Click the link below to join</p>
 
 	{{ with .TokenData }}
-	<p><a href="/org/join?token={{ .Token }}&token_id={{ .Id }}">Join</a></p>
+	<p><a href="{{ .BaseUrl }}/org/join?token={{ .Token }}&token_id={{ .Id }}">Join</a></p>
 	{{ end }}
 </div>
 {{ end }}
