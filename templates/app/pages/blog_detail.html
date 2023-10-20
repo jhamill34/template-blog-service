@@ -7,16 +7,18 @@ Blog
 {{ define "content" }}
 <div class="flex justify-center">
 	<div class="flex-1 max-w-screen-md p-4">
+		{{ with .Post }}
 		<h1 class="flex items-center border-b border-gray-800/10 pb-4">
 			<span class="font-bold text-3xl flex-1">{{ .Title }}</span>
 			<span class="text-sm">{{ .Date }}</span>
 		</h1>
 
-		<img src="data:{{ .ImageMime }};base64, {{ .Image }}" />
+		<img class="my-8 shadow-md rounded" src="data:{{ .ImageMime }};base64, {{ .Image }}" />
+		{{ end }}
 
-		<section>
-			{{ .Content }}
-		</section>
+		<article class="prose">
+			{{ .Body }}
+		</article>
 	</div>
 </div>
 {{ end }}

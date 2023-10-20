@@ -41,6 +41,7 @@ func NewPostServiceError(message string) *UserServiceError {
 }
 
 var PostNotFound *UserServiceError = NewUserServiceError("Post not found")
+var InvalidMimeType *UserServiceError = NewUserServiceError("Invalid mime type")
 
 //==================================================
 

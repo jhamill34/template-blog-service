@@ -5,11 +5,13 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"io"
 	"net/http"
 	"net/url"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/gomarkdown/markdown"
 	"github.com/google/uuid"
 	"github.com/jhamill34/notion-provisioner/internal/config"
 	"github.com/jhamill34/notion-provisioner/internal/models"
@@ -114,6 +116,11 @@ func (self *GatewayRoutes) ListPosts() http.HandlerFunc {
 	}
 }
 
+type GetPostData struct {
+	Post models.PostContent
+	Body template.HTML
+}
+
 func (self *GatewayRoutes) GetPost() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var post models.PostContent
@@ -134,13 +141,21 @@ func (self *GatewayRoutes) GetPost() http.HandlerFunc {
 			return
 		}
 
+		postData := GetPostData{
+			Post: post,
+			Body: template.HTML(markdown.ToHTML([]byte(post.Content), nil, nil)),
+		}
+
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		self.templateService.Render(
 			w,
 			"blog_detail.html",
 			"layout",
-			models.NewTemplate(&post, utils.GetNotifications(r)),
+			models.NewTemplate(
+				postData,
+				utils.GetNotifications(r),
+			),
 		)
 	}
 }
@@ -206,6 +221,16 @@ func (self *GatewayRoutes) ProcessEditPost() http.HandlerFunc {
 
 		var payload bytes.Buffer
 		jsonValue := FromUrlValues(r.Form)
+		file, header, fileErr := r.FormFile("image")
+		if fileErr == nil {
+			defer file.Close()
+
+			var image bytes.Buffer
+			io.Copy(&image, file)
+			jsonValue["image"] = base64.StdEncoding.EncodeToString(image.Bytes())
+			jsonValue["image_mime"] = header.Header.Get("Content-Type")
+		}
+
 		jsonValue.Encode(&payload)
 		err := self.forward(r, nil, &payload, nil)
 		if err != nil {

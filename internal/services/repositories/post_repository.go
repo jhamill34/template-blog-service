@@ -1,14 +1,20 @@
 package repositories
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
+	"image"
+	"image/jpeg"
+	"image/png"
+	"io"
 	"time"
 
 	"github.com/jhamill34/notion-provisioner/internal/database"
 	"github.com/jhamill34/notion-provisioner/internal/database/dao"
 	"github.com/jhamill34/notion-provisioner/internal/models"
 	"github.com/jhamill34/notion-provisioner/internal/services"
+	"golang.org/x/image/draw"
 )
 
 type PostRepository struct {
@@ -163,7 +169,7 @@ func (self *PostRepository) ListPosts(ctx context.Context) []models.PostStub {
 			Title:     post.Title,
 			Date:      createdAtStr,
 			ImageMime: post.ImageMime,
-			Image:     base64.StdEncoding.EncodeToString(post.Image),
+			Image:     base64.StdEncoding.EncodeToString(post.Thumbnail),
 			Preview:   postPreview,
 		}
 	}
@@ -189,15 +195,55 @@ func (self *PostRepository) AddImage(
 		}
 	}
 
-	// TODO: validate mime type
-	// TODO: resize
+	if mimeType != "image/png" && mimeType != "image/jpeg" {
+		return services.InvalidMimeType
+	}
 
-	err := self.postDao.AddImage(ctx, id, mimeType, image)
+	var thumbnailBuffer bytes.Buffer
+	if mimeType == "image/png" {
+		resizePng(bytes.NewReader(image), &thumbnailBuffer)
+	} else if mimeType == "image/jpeg" {
+		resizeJpeg(bytes.NewReader(image), &thumbnailBuffer)
+	}
+
+	err := self.postDao.AddImage(ctx, id, mimeType, image, thumbnailBuffer.Bytes())
 	if err != nil {
 		panic(err)
 	}
 
 	return nil
+}
+
+const Width = 600
+
+func resizeJpeg(r io.Reader, w io.Writer) {
+	src, err := jpeg.Decode(r)
+	if err != nil {
+		panic(err)
+	}
+
+	scale := float64(Width) / float64(src.Bounds().Max.X)
+	height := int(float64(src.Bounds().Max.Y) * scale)
+
+	dst := image.NewRGBA(image.Rect(0, 0, Width, height))
+	draw.CatmullRom.Scale(dst, dst.Rect, src, src.Bounds(), draw.Over, nil)
+
+	jpeg.Encode(w, dst, nil)
+}
+
+func resizePng(r io.Reader, w io.Writer) {
+	src, err := png.Decode(r)
+	if err != nil {
+		panic(err)
+	}
+
+	scale := float64(Width) / float64(src.Bounds().Max.X)
+	height := int(float64(src.Bounds().Max.Y) * scale)
+
+	dst := image.NewRGBA(image.Rect(0, 0, Width, height))
+	draw.CatmullRom.Scale(dst, dst.Rect, src, src.Bounds(), draw.Over, nil)
+
+	png.Encode(w, dst)
 }
 
 // var _ services.BlogPostService = (*PostRepository)(nil)

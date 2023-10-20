@@ -1,2 +1,2 @@
-alter table post add column image blob;
+alter table post add column image mediumblob;
 

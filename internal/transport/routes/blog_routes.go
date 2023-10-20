@@ -171,6 +171,26 @@ func (self *BlogRoutes) UpdatePost() http.HandlerFunc {
 		if err != nil {
 			panic(err)
 		}
+		
+		if payload.Image != "" {
+			imageData, base64Err := base64.StdEncoding.DecodeString(payload.Image)
+			if base64Err != nil {
+				panic(err)
+			}
+
+			err = self.postService.AddImage(r.Context(), post.Id, payload.ImageMIME, imageData)
+			if err == services.AccessDenied {
+				utils.RenderJSON(
+					w,
+					models.ForwardError{Message: "Access denied"},
+					http.StatusForbidden,
+				)
+				return
+			}
+			if err != nil {
+				panic(err)
+			}
+		}
 
 		utils.RenderJSON(w, post, http.StatusCreated)
 	}
