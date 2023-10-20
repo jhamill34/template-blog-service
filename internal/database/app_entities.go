@@ -7,7 +7,7 @@ type Post struct {
 	Author    string `db:"author"`
 	Image     []byte `db:"image"`
 	Thumbnail []byte `db:"thumbnail"`
-	ImageMime string `db:"image_mime"`
+	ImageMime *string `db:"image_mime"`
 	CreatedAt string `db:"created_at"`
 	UpdatedAt string `db:"updated_at"`
 }
