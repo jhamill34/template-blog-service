@@ -2,6 +2,7 @@ package routes
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -73,8 +74,10 @@ func (self *GatewayRoutes) Routes() (string, http.Handler) {
 		group.Use(middleware.RedirectToIndexMiddleware)
 		group.Get("/blog/new", self.NewPost())
 		group.Post("/blog", self.ProcessNewPost())
+
 		group.Get("/blog/{id}/edit", self.EditPost())
 		group.Put("/blog/{id}", self.ProcessEditPost())
+
 		group.Delete("/blog/{id}", self.ProcessDeletePost())
 	})
 
@@ -91,7 +94,11 @@ func (self *GatewayRoutes) ListPosts() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var posts []models.PostStub
 		var err *models.Notification
-		err = self.forward(r, nil, &posts)
+
+		var response bytes.Buffer
+		err = self.forward(r, nil, nil, &response)
+		json.NewDecoder(&response).Decode(&posts)
+
 		if err == nil {
 			err = utils.GetNotifications(r)
 		}
@@ -111,7 +118,11 @@ func (self *GatewayRoutes) GetPost() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var post models.PostContent
 		var err *models.Notification
-		err = self.forward(r, nil, &post)
+
+		var response bytes.Buffer
+		err = self.forward(r, nil, nil, &response)
+		json.NewDecoder(&response).Decode(&post)
+
 		if err != nil {
 			utils.SetNotifications(
 				w,
@@ -141,7 +152,11 @@ func (self *GatewayRoutes) EditPost() http.HandlerFunc {
 		endpoint := "/blog/" + id
 
 		var post models.PostContent
-		err := self.forward(r, &endpoint, &post)
+
+		var response bytes.Buffer
+		err := self.forward(r, &endpoint, nil, &response)
+		json.NewDecoder(&response).Decode(&post)
+
 		if err != nil {
 			utils.SetNotifications(
 				w,
@@ -189,7 +204,10 @@ func (self *GatewayRoutes) ProcessEditPost() http.HandlerFunc {
 			return
 		}
 
-		err := self.forward(r, nil, nil)
+		var payload bytes.Buffer
+		jsonValue := FromUrlValues(r.Form)
+		jsonValue.Encode(&payload)
+		err := self.forward(r, nil, &payload, nil)
 		if err != nil {
 			utils.SetNotifications(
 				w,
@@ -247,7 +265,22 @@ func (self *GatewayRoutes) ProcessNewPost() http.HandlerFunc {
 			return
 		}
 
-		err := self.forward(r, nil, nil)
+		var payload bytes.Buffer
+		jsonValue := FromUrlValues(r.Form)
+
+		file, header, fileErr := r.FormFile("image")
+		if fileErr == nil {
+			defer file.Close()
+
+			var image bytes.Buffer
+			io.Copy(&image, file)
+			jsonValue["image"] = base64.StdEncoding.EncodeToString(image.Bytes())
+			jsonValue["image_mime"] = header.Header.Get("Content-Type")
+		}
+
+		jsonValue.Encode(&payload)
+
+		err := self.forward(r, nil, &payload, nil)
 		if err != nil {
 			utils.SetNotifications(
 				w,
@@ -285,7 +318,7 @@ func (self *GatewayRoutes) ProcessDeletePost() http.HandlerFunc {
 			return
 		}
 
-		err := self.forward(r, nil, nil)
+		err := self.forward(r, nil, nil, nil)
 		if err != nil {
 			utils.SetNotifications(
 				w,
@@ -317,10 +350,30 @@ func (self *ForwardError) Notify() *models.Notification {
 	}
 }
 
+type JSONValue map[string]interface{}
+
+func FromUrlValues(values url.Values) JSONValue {
+	jsonValue := make(JSONValue)
+
+	for key, value := range values {
+		if len(value) == 1 {
+			jsonValue[key] = value[0]
+		} else {
+			jsonValue[key] = value
+		}
+	}
+	return jsonValue
+}
+
+func (self *JSONValue) Encode(w io.Writer) error {
+	return json.NewEncoder(w).Encode(self)
+}
+
 func (self *GatewayRoutes) forward(
 	r *http.Request,
 	toUrl *string,
-	data interface{},
+	reqData io.Reader,
+	resData io.Writer,
 ) *models.Notification {
 	var endpointString string
 	if toUrl != nil {
@@ -343,13 +396,14 @@ func (self *GatewayRoutes) forward(
 		r.Context(),
 		r.Method,
 		endpoint.String(),
-		bytes.NewBufferString(r.Form.Encode()),
+		reqData,
 	)
 	if err != nil {
 		panic(err)
 	}
 	appReq.Header = r.Header
 
+	appReq.Header.Set("Content-Type", "application/json")
 	tokenData, ok := r.Context().Value("token").(*models.AccessTokenResponse)
 	if ok && tokenData != nil {
 		appReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenData.AccessToken))
@@ -361,8 +415,10 @@ func (self *GatewayRoutes) forward(
 	}
 
 	if appres.StatusCode >= 200 && appres.StatusCode < 300 {
-		if data != nil {
-			json.NewDecoder(appres.Body).Decode(data)
+		if resData != nil {
+			if _, err := io.Copy(resData, appres.Body); err != nil {
+				panic(err)
+			}
 		}
 		return nil
 	}

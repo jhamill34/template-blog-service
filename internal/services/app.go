@@ -12,4 +12,5 @@ type BlogPostService interface {
 	UpdatePost(ctx context.Context, id, title, content string) (*models.PostStub, models.Notifier)
 	DeletePost(ctx context.Context, id string) models.Notifier
 	ListPosts(ctx context.Context) []models.PostStub
+	AddImage(ctx context.Context, id string, mimeType string, image []byte) models.Notifier
 }

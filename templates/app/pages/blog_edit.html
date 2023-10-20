@@ -6,7 +6,7 @@ Edit Post
 
 {{ define "content" }}
 <div class="flex justify-center">
-	<div class="flex-1 p-8 ring-1 ring-gray-300 rounded m-4 max-w-sm">
+	<div class="flex-1 p-8 ring-1 ring-gray-300 rounded m-4 max-w-screen-lg">
 		<h1 class="font-bold text-gray-900 text-xl text-center mb-4 border-b border-gray-300 p-2">New Post</h1>
 		{{ $csrf_token := .CsrfToken }}
 		{{ with .Post }}
@@ -20,12 +20,15 @@ Edit Post
 					class="block border-0 ring-1 ring-inset ring-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
 					id="title" type="text" name="title" placeholder="Title" value="{{ .Title }}" />
 			</div>
+			
+			<div class="text-sm mb-4 flex flex-col items-start">
+				<label class="font-bold block text-gray-900" for="image">Image</label>
+				<input id="image" type="file" name="image" />
+			</div>
 
 			<div class="text-sm mb-4 flex flex-col">
 				<label class="font-bold block text-gray-900" for="content">Content</label>
-				<input
-					class="block border-0 ring-1 ring-inset ring-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
-					id="content" type="text" name="content" placeholder="Content" value="{{ .Content }}" />
+				<textarea rows="10" class="block border-0 ring-1 ring-inset ring-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-inset focus:ring-indigo-600" id="content" type="text" name="content">{{ .Content }}</textarea>
 			</div>
 
 			{{ end }}

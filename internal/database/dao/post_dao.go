@@ -40,7 +40,7 @@ func (self *PostDao) GetPost(ctx context.Context, id string) (*database.Post, er
 	var post database.Post
 	err := db.GetContext(ctx, &post, `
 		SELECT 
-			id, title, content, author, created_at, updated_at
+			id, title, content, author, image, image_mime, created_at, updated_at
 		FROM post 
 		WHERE id = ?
 	`, id)
@@ -101,7 +101,7 @@ func (self *PostDao) ListPosts(ctx context.Context) ([]database.Post, error) {
 	var posts []database.Post
 	err := db.SelectContext(ctx, &posts, `
 		SELECT 
-			id, title, content, author, created_at, updated_at
+			id, title, content, author, image, image_mime, created_at, updated_at
 		FROM post
 	`)
 	if err != nil {
@@ -109,4 +109,20 @@ func (self *PostDao) ListPosts(ctx context.Context) ([]database.Post, error) {
 	}
 
 	return posts, nil
+}
+
+func (self *PostDao) AddImage(ctx context.Context, id string, mimeType string, data []byte) error {
+	db := self.databaseProvider.Get()
+
+	_, err := db.ExecContext(ctx, `
+		UPDATE post 
+		SET image = ?, image_mime = ?
+		WHERE id = ?
+	`, data, mimeType, id)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

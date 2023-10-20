@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 
@@ -36,6 +37,7 @@ func (self *BlogRoutes) Routes() (string, http.Handler) {
 	router.Group(func(group chi.Router) {
 		group.Use(middleware.NewTokenAuthMiddleware(self.signer))
 		group.Use(middleware.UnauthorizedMiddleware)
+
 		group.Post("/blog", self.CreatePost())
 		group.Put("/blog/{id}", self.UpdatePost())
 		group.Delete("/blog/{id}", self.DeletePost())
@@ -74,8 +76,10 @@ func (self *BlogRoutes) ListPosts() http.HandlerFunc {
 }
 
 type PostPayload struct {
-	Title   string `json:"title"`
-	Content string `json:"content"`
+	Title     string `json:"title"`
+	Content   string `json:"content"`
+	Image     string `json:"image"`
+	ImageMIME string `json:"image_mime"`
 }
 
 func (self *BlogRoutes) CreatePost() http.HandlerFunc {
@@ -83,20 +87,13 @@ func (self *BlogRoutes) CreatePost() http.HandlerFunc {
 		userId := r.Context().Value("user_id").(string)
 
 		var payload PostPayload
-		if r.Header.Get("Content-Type") == "application/json" {
-			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-				utils.RenderJSON(
-					w,
-					models.ForwardError{Message: "Bad Request"},
-					http.StatusBadRequest,
-				)
-				return
-			}
-		} else {
-			payload = PostPayload{
-				Title:   r.FormValue("title"),
-				Content: r.FormValue("content"),
-			}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			utils.RenderJSON(
+				w,
+				models.ForwardError{Message: "Bad Request"},
+				http.StatusBadRequest,
+			)
+			return
 		}
 
 		post, err := self.postService.CreatePost(
@@ -118,6 +115,26 @@ func (self *BlogRoutes) CreatePost() http.HandlerFunc {
 			panic(err)
 		}
 
+		if payload.Image != "" {
+			imageData, base64Err := base64.StdEncoding.DecodeString(payload.Image)
+			if base64Err != nil {
+				panic(err)
+			}
+
+			err = self.postService.AddImage(r.Context(), post.Id, payload.ImageMIME, imageData)
+			if err == services.AccessDenied {
+				utils.RenderJSON(
+					w,
+					models.ForwardError{Message: "Access denied"},
+					http.StatusForbidden,
+				)
+				return
+			}
+			if err != nil {
+				panic(err)
+			}
+		}
+
 		utils.RenderJSON(w, post, http.StatusCreated)
 	}
 }
@@ -127,20 +144,13 @@ func (self *BlogRoutes) UpdatePost() http.HandlerFunc {
 		id := chi.URLParam(r, "id")
 
 		var payload PostPayload
-		if r.Header.Get("Content-Type") == "application/json" {
-			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-				utils.RenderJSON(
-					w,
-					models.ForwardError{Message: "Bad Request"},
-					http.StatusBadRequest,
-				)
-				return
-			}
-		} else {
-			payload = PostPayload{
-				Title:   r.FormValue("title"),
-				Content: r.FormValue("content"),
-			}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			utils.RenderJSON(
+				w,
+				models.ForwardError{Message: "Bad Request"},
+				http.StatusBadRequest,
+			)
+			return
 		}
 
 		post, err := self.postService.UpdatePost(
@@ -187,5 +197,3 @@ func (self *BlogRoutes) DeletePost() http.HandlerFunc {
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
-
-// var _ transport.Router = (*BlogRoutes)(nil)

@@ -5,9 +5,18 @@ Blog
 {{ end }}
 
 {{ define "content" }}
-<h1>{{ .Title }}</h1>
+<div class="flex justify-center">
+	<div class="flex-1 max-w-screen-md p-4">
+		<h1 class="flex items-center border-b border-gray-800/10 pb-4">
+			<span class="font-bold text-3xl flex-1">{{ .Title }}</span>
+			<span class="text-sm">{{ .Date }}</span>
+		</h1>
 
-<section>
-	{{ .Content }}
-</section>
+		<img src="data:{{ .ImageMime }};base64, {{ .Image }}" />
+
+		<section>
+			{{ .Content }}
+		</section>
+	</div>
+</div>
 {{ end }}
