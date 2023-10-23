@@ -1,4 +1,4 @@
-package app
+package gateway
 
 import (
 	"context"
@@ -17,7 +17,7 @@ type Gateway struct {
 	cleanup func(ctx context.Context)
 }
 
-func ConfigureGateway() *Gateway {
+func Configure() *Gateway {
 	cfg, err := config.LoadGatewayConfig("configs/gateway.yaml")
 	if err != nil {
 		panic(err)
@@ -27,12 +27,12 @@ func ConfigureGateway() *Gateway {
 		NewTemplateRepository(cfg.Template.Common...).
 		AddTemplates(cfg.Template.Paths...)
 
-	kv := database.NewRedisProvider("GATEWAY:", cfg.Cache.Addr, cfg.Cache.Password)
+	kv := database.NewRedisProvider("GATEWAY:", cfg.Cache.Addr.String(), cfg.Cache.Password.String())
 
 	sessionStore := session.NewRedisSessionStore(
 		kv,
 		cfg.SessionConfig.TTL,
-		cfg.SessionConfig.SigningKey,
+		[]byte(cfg.SessionConfig.SigningKey.String()),
 	)
 
 	return &Gateway{
@@ -44,11 +44,9 @@ func ConfigureGateway() *Gateway {
 				http.DefaultClient,
 				cfg.SessionConfig,
 				cfg.Oauth,
-				cfg.AuthServer,
-				cfg.ExternalAuthServer,
-				cfg.AppServer,
+				cfg.AppServer.String(),
 				cfg.Notifications,
-				cfg.Server.BaseUrl,
+				cfg.Server.BaseUrl.String(),
 			),
 		),
 		cleanup: func(ctx context.Context) {

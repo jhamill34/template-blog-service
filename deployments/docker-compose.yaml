@@ -1,0 +1,159 @@
+version: '3'
+
+services:
+  migration_service:
+    image: migrator:latest
+    environment:
+      DB_USER: root
+      DB_PASSWORD: ${DB_ROOT_PASSWORD}
+      DB_HOST: database_store
+      DB_NAME: datadb
+    networks:
+      - main
+    depends_on:
+      database_store:
+        condition: service_healthy
+
+
+  auth_service:
+    image: auth_server:latest
+    container_name: auth_service
+    environment:
+      BASE_URL: "https://auth.${ROOT_DOMAIN}"
+      APP_SERVER_BASE_URL: "https://app.${ROOT_DOMAIN}"
+      CACHE_ADDRESS: cache_store:6379
+      CACHE_PASSWORD: ${CACHE_PASSWORD}
+      PUBSUB_ADDRESS: cache_store:6379
+      PUBSUB_PASSWORD: ${CACHE_PASSWORD}
+      DB_USER: auth_user
+      DB_PASSWORD: ${DB_AUTH_PASSWORD}
+      DB_HOST: database_store
+      DB_NAME: datadb
+      DEFAULT_USER_EMAIL: "admin@${ROOT_DOMAIN}"
+      DEFAULT_USER_PASSWORD: ${AUTH_DEFAULT_PASSWORD}
+      DEFAULT_APP_CLIENT_ID: ${DEFAULT_OAUTH_CLIENT_ID}
+      DEFAULT_APP_CLIENT_SECRET: ${DEFAULT_OAUTH_CLIENT_SECRET}
+      PASSWORD_SECRET: ${AUTH_TOKEN_SECRET}
+      SESSION_SECRET: ${AUTH_SESSION_SECRET}
+      EMAIL_DOMAIN: ${ROOT_DOMAIN}
+      EMAIL_USER: admin
+      SMTP_DOMAIN: email_service
+    networks:
+      - main
+    depends_on:
+      migration_service:
+        condition: service_completed_successfully
+      cache_store:
+        condition: service_healthy
+  
+
+  app_service:
+    image: app_service:latest
+    container_name: app_service
+    environment:
+      BASE_URL: "https://api.${ROOT_DOMAIN}"
+      CACHE_ADDRESS: cache_store:6379
+      CACHE_PASSWORD: ${CACHE_PASSWORD}
+      PUBSUB_ADDRESS: cache_store:6379
+      PUBSUB_PASSWORD: ${CACHE_PASSWORD}
+      DB_USER: app_user
+      DB_PASSWORD: ${DB_APP_PASSWORD}
+      DB_HOST: database_store
+      DB_NAME: datadb
+      INTERNAL_AUTH_SERVER_BASE_URL: http://auth_service
+    networks:
+      - main
+    depends_on:
+      migration_service:
+        condition: service_completed_successfully
+      cache_store:
+        condition: service_healthy
+
+
+  gateway_service:
+    image: gateway_service:latest
+    container_name: gateway_service
+    environment:
+      BASE_URL: "https://app.${ROOT_DOMAIN}"
+      AUTH_SERVER_BASE_URL: "https://auth.${ROOT_DOMAIN}"
+      INTERNAL_AUTH_SERVER_DOMAIN: auth_service
+      INTERNAL_APP_SERVER_DOMAIN: app_service
+      CACHE_ADDRESS: cache_store:6379
+      CACHE_PASSWORD: ${CACHE_PASSWORD}
+      SESSION_SECRET: ${APP_SESSION_SECRET}
+      OAUTH_CLIENT_ID: ${DEFAULT_OAUTH_CLIENT_ID}
+      OAUTH_CLIENT_SECRET: ${DEFAULT_OAUTH_CLIENT_SECRET}
+    networks:
+      - main
+    depends_on:
+      cache_store:
+        condition: service_healthy
+
+
+  email_service:
+    container_name: email_service
+    image: mailer:latest
+    environment:
+      EMAIL_DOMAIN: ${ROOT_DOMAIN}
+    networks:
+      - main
+  
+
+  database_store:
+    image: database:latest
+    container_name: database_store
+    ports:
+      - "10003:3306"
+    networks:
+      - main
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: datadb
+      DB_AUTH_USER: auth_user
+      DB_AUTH_PASSWORD: ${DB_AUTH_PASSWORD}
+      DB_APP_USER: app_user
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD}
+    volumes:
+      - database_data:/var/lib/mysql
+  
+
+  cache_store:
+    image: cache:latest
+    container_name: cache_store 
+    environment:
+      CACHE_PASSWORD: ${CACHE_PASSWORD}
+    ports:
+      - "6383:6379"
+    networks:
+      - main
+    volumes:
+      - cache_data:/data
+  
+  proxy:
+    image: proxy:latest
+    container_name: reverse_proxy
+    ports:
+      - "443:443"
+    networks:
+      - main
+    environment:
+      ROOT_DOMAIN: ${ROOT_DOMAIN}
+      INTERNAL_AUTH_SERVER_DOMAIN: auth_service
+      INTERNAL_APP_SERVER_DOMAIN: app_service
+      INTERNAL_GATEWAY_SERVER_DOMAIN: gateway_service
+    depends_on:
+      auth_service:
+        condition: service_started
+      app_service:
+        condition: service_started
+      gateway_service:
+        condition: service_started
+
+volumes:
+  database_data:
+  cache_data:
+
+networks:
+  main:
+    name: main
+    driver: bridge

@@ -1,4 +1,4 @@
-package app
+package auth
 
 import (
 	"context"
@@ -28,7 +28,7 @@ type Auth struct {
 	cleanup func(ctx context.Context)
 }
 
-func ConfigureAuth() *Auth {
+func Configure() *Auth {
 	cfg, err := config.LoadAuthConfig("configs/auth.yaml")
 	if err != nil {
 		panic(err)
@@ -38,8 +38,8 @@ func ConfigureAuth() *Auth {
 	publicKey := loadPublicKey(cfg.AccessToken.PublicKeyPath)
 	signer := rca_signer.NewRcaSigner(rca_signer.NewStaticPublicKeyProvider(publicKey), privateKey)
 
-	db := database.NewMySQLDbProvider(cfg.Database.Path)
-	kv := database.NewRedisProvider("AUTH:", cfg.Cache.Addr, cfg.Cache.Password)
+	db := database.NewMySQLDbProvider(cfg.Database.GetConnectionString())
+	kv := database.NewRedisProvider("AUTH:", cfg.Cache.Addr.String(), cfg.Cache.Password.String())
 
 	templateRepository := repositories.
 		NewTemplateRepository(cfg.Template.Common...).
@@ -48,7 +48,7 @@ func ConfigureAuth() *Auth {
 	sessionStore := session.NewRedisSessionStore(
 		kv,
 		cfg.Session.TTL,
-		cfg.Session.SigningKey,
+		[]byte(cfg.Session.SigningKey.String()),
 	)
 	verifyTokenRepository := repositories.NewHashedVerifyTokenRepository(
 		kv,
@@ -82,11 +82,11 @@ func ConfigureAuth() *Auth {
 	)
 
 	smtpAddr := fmt.Sprintf("%s:%d", cfg.Email.SmtpDomain, cfg.Email.SmtpPort)
-	emailService := email.NewSmtpSender(smtpAddr, cfg.Email.User, cfg.Email.Domain)
+	emailService := email.NewSmtpSender(smtpAddr, cfg.Email.User.String(), cfg.Email.Domain.String())
 
 	userDao := dao.NewUserDao(db)
 	authRepo := repositories.NewAuthRepository(
-		cfg.Server.BaseUrl,
+		cfg.Server.BaseUrl.String(),
 		userDao,
 		cfg.PasswordConfig,
 		verifyTokenRepository,
@@ -99,7 +99,7 @@ func ConfigureAuth() *Auth {
 	appDao := dao.NewApplicationDao(db)
 	orgDao := dao.NewOrganizationDao(db)
 
-	publisher := database.NewRedisPublisherProvider(cfg.PubSub.Addr, cfg.PubSub.Password)
+	publisher := database.NewRedisPublisherProvider(cfg.PubSub.Addr.String(), cfg.PubSub.Password.String())
 	permissionModel := config.LoadRbacModel("configs/rbac_model.conf")
 	policyProvider := rbac.NewDatabasePolicyProvider(userDao, orgDao)
 	accessControlService := rbac.NewCasbinAccessControl(
@@ -120,7 +120,7 @@ func ConfigureAuth() *Auth {
 	)
 
 	orgRepo := repositories.NewOrganizationRepository(
-		cfg.Server.BaseUrl,
+		cfg.Server.BaseUrl.String(),
 		orgDao,
 		userDao,
 		accessControlService,
@@ -133,7 +133,7 @@ func ConfigureAuth() *Auth {
 		server: transport.NewServer(
 			cfg.Server,
 			routes.NewAuthRoutes(
-				cfg.Server.BaseUrl,
+				cfg.Server.BaseUrl.String(),
 				cfg.Notifications,
 				cfg.Session,
 				authRepo,
@@ -181,8 +181,8 @@ func ConfigureAuth() *Auth {
 				if err == services.AccountNotFound {
 					err = authRepo.CreateRootUser(
 						ctx,
-						cfg.DefaultUser.Email,
-						cfg.DefaultUser.Password,
+						cfg.DefaultUser.Email.String(),
+						cfg.DefaultUser.Password.String(),
 					)
 					if err != nil {
 						panic(err)
@@ -199,13 +199,13 @@ func ConfigureAuth() *Auth {
 				// Pretend to log in as root to do this action
 				newContext := context.WithValue(ctx, "user_id", "ROOT")
 
-				_, err := appService.GetAppByClientId(newContext, cfg.DefaultApp.ClientId)
+				_, err := appService.GetAppByClientId(newContext, cfg.DefaultApp.ClientId.String())
 				if err == services.AppNotFound {
 					_, err = appService.CreateApp(
 						newContext,
-						cfg.DefaultApp.ClientId,
-						cfg.DefaultApp.ClientSecret,
-						cfg.DefaultApp.RedirectUri,
+						cfg.DefaultApp.ClientId.String(),
+						cfg.DefaultApp.ClientSecret.String(),
+						cfg.DefaultApp.RedirectUri.String(),
 						cfg.DefaultApp.Name,
 						cfg.DefaultApp.Description,
 					)

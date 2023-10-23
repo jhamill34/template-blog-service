@@ -1,3 +1,6 @@
+# Required Environement Variables:
+# - EMAIL_DOMAIN
+
 port: 25
 protocol: tcp4
 
@@ -9,7 +12,7 @@ max_recipients: 100
 
 dkim:
   selector: dkim2
-  domain: joshrasmussen.dev
+  domain: ${EMAIL_DOMAIN}
   headers:
     - From
     - To

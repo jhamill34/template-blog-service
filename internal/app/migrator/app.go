@@ -1,4 +1,4 @@
-package app
+package migrator
 
 import (
 	"github.com/jhamill34/notion-provisioner/internal/config"
@@ -10,13 +10,13 @@ type Migrator struct {
 	migrations       []string
 }
 
-func ConfigureMigrator() *Migrator {
+func Configure() *Migrator {
 	cfg, err := config.LoadMigrationConfig("configs/migrator.yaml")
 	if err != nil {
 		panic(err)
 	}
 
-	db := database.NewMySQLDbProvider(cfg.Database.Path)
+	db := database.NewMySQLDbProvider(cfg.Database.GetConnectionString())
 
 	return &Migrator{db, cfg.Migrations}
 }

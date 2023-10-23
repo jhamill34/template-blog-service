@@ -1,6 +1,9 @@
 package config
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 type NotificationsConfig struct {
 	Timeout time.Duration `yaml:"timeout"`
@@ -11,16 +14,29 @@ type ServerConfig struct {
 	IdleTimeout  time.Duration `yaml:"idle_timeout"`
 	ReadTimeout  time.Duration `yaml:"read_timeout"`
 	WriteTimeout time.Duration `yaml:"write_timeout"`
-	BaseUrl      string        `yaml:"base_url"`
+	BaseUrl      StringFromEnv `yaml:"base_url"`
 }
 
 type DatabaseConfig struct {
-	Path string `yaml:"path"`
+	User   StringFromEnv `yaml:"user"`
+	Pass   StringFromEnv `yaml:"pass"`
+	Host   StringFromEnv `yaml:"host"`
+	DbName StringFromEnv `yaml:"db_name"`
+}
+
+func (c DatabaseConfig) GetConnectionString() string {
+	return fmt.Sprintf(
+		"%s:%s@tcp(%s)/%s?parseTime=true&multiStatements=true",
+		c.User,
+		c.Pass,
+		c.Host,
+		c.DbName,
+	)
 }
 
 type RedisConfig struct {
-	Addr     string `yaml:"address"`
-	Password string `yaml:"password"`
+	Addr     StringFromEnv `yaml:"address"`
+	Password StringFromEnv `yaml:"password"`
 }
 
 type TemplateConfig struct {
@@ -31,5 +47,5 @@ type TemplateConfig struct {
 type SessionConfig struct {
 	TTL        time.Duration `yaml:"ttl"`
 	CookieTTL  time.Duration `yaml:"cookie_ttl"`
-	SigningKey []byte        `yaml:"signing_key"`
+	SigningKey StringFromEnv `yaml:"signing_key"`
 }

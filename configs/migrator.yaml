@@ -1,5 +1,14 @@
+# Required Environment Variables:
+# - DB_USER
+# - DB_PASSWORD
+# - DB_HOST
+# - DB_NAME
+
 database:
-  path: "root:supersecret@tcp(mysql_store)/datadb?parseTime=true&multiStatements=true"
+  user: ${DB_USER}
+  pass: ${DB_PASSWORD}
+  host: ${DB_HOST} 
+  db_name: ${DB_NAME}
 
 migrations:
   - "./migrations/*.sql"

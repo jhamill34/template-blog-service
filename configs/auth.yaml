@@ -1,40 +1,64 @@
+# Required Environment Variables:
+# - BASE_URL
+# - CACHE_ADDRESS
+# - CACHE_PASSWORD
+# - PUBSUB_ADDRESS
+# - PUBSUB_PASSWORD
+# - DB_USER
+# - DB_PASSWORD
+# - DB_HOST
+# - DB_NAME 
+# - DEFAULT_USER_EMAIL
+# - DEFAULT_USER_PASSWORD
+# - DEFAULT_APP_CLIENT_ID
+# - DEFAULT_APP_CLIENT_SECRET
+# - APP_SERVER_BASE_URL
+# - PASSWORD_SECRET
+# - SESSION_SECRET
+# - EMAIL_DOMAIN
+# - EMAIL_USER
+# - SMTP_DOMAIN
+
 server:
   port: 80
   idle_timeout: 60s
   read_timeout: 1s
   write_timeout: 2s
-  base_url: https://auth.spedue.com
+  base_url: ${BASE_URL}
 
 cache:
-  address: redis_store:6379
-  password: password
+  address: ${CACHE_ADDRESS}
+  password: ${CACHE_PASSWORD}
 
 pubsub:
-  address: redis_store:6379
-  password: password
+  address: ${PUBSUB_ADDRESS}
+  password: ${PUBSUB_PASSWORD}
 
 database:
-  path: "auth_user:auth_password@tcp(mysql_store)/datadb?parseTime=true&multiStatements=true"
+  user: ${DB_USER}
+  pass: ${DB_PASSWORD}
+  host: ${DB_HOST}
+  db_name: ${DB_NAME}
 
 notifications:
   timeout: 1s
 
 template:
   common: 
-    - "./templates/auth/components/*.html"
+    - "./templates/components/*.html"
   paths:
-    - "./templates/auth/pages/*.html"
+    - "./templates/pages/*.html"
 
 default_user:
-  email: "joshrasmussen34@gmail.com"
-  password: "password"
+  email: ${DEFAULT_USER_EMAIL}
+  password: ${DEFAULT_USER_PASSWORD}
 
 default_app:
-  client_id: "efae5523-7585-4eae-8f4d-97897e0626f4"
-  client_secret: "965963cf-752d-4f0a-84ea-affba4e55d61"
+  client_id: ${DEFAULT_APP_CLIENT_ID}
+  client_secret: ${DEFAULT_APP_CLIENT_SECRET}
   name: "Default App"
   description: "Used for app server"
-  redirect_uri: "https://app.spedue.com/oauth/callback"
+  redirect_uri: ${APP_SERVER_BASE_URL}/oauth/callback
 
 password_config:
   iterations: 3
@@ -42,9 +66,7 @@ password_config:
   parallelism: 4
   hash_length: 32
   salt_length: 16
-
-  # TODO: Environment Variable?
-  secret: SECRET
+  secret: ${PASSWORD_SECRET}
 
 verify_ttl: 300s
 password_forgot_ttl: 300s
@@ -59,12 +81,10 @@ access_token:
 session:
   ttl: 3600s 
   cookie_ttl: 86400s 
-
-  # TODO: Environment Variable?
-  key: SESSIONSECRET
+  key: ${SESSION_SECRET}
 
 email:
-  domain: joshrasmussen.dev
-  user: admin
-  smtp_domain: email_service
+  domain: ${EMAIL_DOMAIN}
+  user: ${EMAIL_USER}
+  smtp_domain: ${SMTP_DOMAIN}
   smtp_port: 25

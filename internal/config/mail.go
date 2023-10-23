@@ -10,13 +10,13 @@ import (
 type MailerConfig struct {
 	Port           int             `yaml:"port"`
 	Protocol       string          `yaml:"protocol"`
-	Dkim           DkimConfig      `yaml:"dkim"`
-	Forwarder      ForwarderConfig `yaml:"forwarder"`
 	ReadTimeout    time.Duration   `yaml:"read_timeout"`
 	WriteTimeout   time.Duration   `yaml:"write_timeout"`
 	DataTimeout    time.Duration   `yaml:"data_timeout"`
 	MaxMessageSize int             `yaml:"max_message_size"`
 	MaxRecipients  int             `yaml:"max_recipients"`
+	Dkim           DkimConfig      `yaml:"dkim"`
+	Forwarder      ForwarderConfig `yaml:"forwarder"`
 }
 
 type ForwarderConfig struct {
@@ -24,10 +24,10 @@ type ForwarderConfig struct {
 }
 
 type DkimConfig struct {
-	Selector       string   `yaml:"selector"`
-	Domain         string   `yaml:"domain"`
-	Headers        []string `yaml:"headers"`
-	PrivateKeyPath string   `yaml:"private_key_path"`
+	Selector       string        `yaml:"selector"`
+	Domain         StringFromEnv `yaml:"domain"`
+	Headers        []string      `yaml:"headers"`
+	PrivateKeyPath string        `yaml:"private_key_path"`
 }
 
 func LoadMailConfig(filename string) (MailerConfig, error) {

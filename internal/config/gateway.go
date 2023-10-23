@@ -7,22 +7,20 @@ import (
 )
 
 type GatewayConfig struct {
-	Server             ServerConfig        `yaml:"server"`
-	Template           TemplateConfig      `yaml:"template"`
-	Cache              RedisConfig         `yaml:"cache"`
-	SessionConfig      SessionConfig       `yaml:"session"`
-	Notifications      NotificationsConfig `yaml:"notifications"`
-	Oauth              OauthConfig         `yaml:"oauth"`
-	AuthServer         string              `yaml:"auth_server"`
-	ExternalAuthServer string              `yaml:"external_auth_server"`
-	AppServer          string              `yaml:"app_server"`
+	Server        ServerConfig        `yaml:"server"`
+	Cache         RedisConfig         `yaml:"cache"`
+	SessionConfig SessionConfig       `yaml:"session"`
+	Notifications NotificationsConfig `yaml:"notifications"`
+	Oauth         OauthConfig         `yaml:"oauth"`
+	AppServer     StringFromEnv       `yaml:"app_server"`
+	Template      TemplateConfig      `yaml:"template"`
 }
 
 type OauthConfig struct {
-	ClientID     string `yaml:"client_id"`
-	ClientSecret string `yaml:"client_secret"`
-	AuthorizeUri string `yaml:"authorize_uri"`
-	TokenUri     string `yaml:"token_uri"`
+	ClientID             StringFromEnv `yaml:"client_id"`
+	ClientSecret         StringFromEnv `yaml:"client_secret"`
+	RedirectAuthorizeUri StringFromEnv `yaml:"redirect_authorize_uri"`
+	TokenUri             StringFromEnv `yaml:"token_uri"`
 }
 
 func LoadGatewayConfig(filename string) (GatewayConfig, error) {

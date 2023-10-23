@@ -26,8 +26,6 @@ type GatewayRoutes struct {
 	httpClient         *http.Client
 	sessionConfig      config.SessionConfig
 	oauthConfig        config.OauthConfig
-	authServer         string
-	externalAuthServer string
 	appServer          string
 	notificationConfig config.NotificationsConfig
 	baseUrl            string
@@ -39,8 +37,6 @@ func NewGatewayRoutes(
 	httpClient *http.Client,
 	sessionConfig config.SessionConfig,
 	oauthConfig config.OauthConfig,
-	authServer string,
-	externalAuthServer string,
 	appServer string,
 	notificationConfig config.NotificationsConfig,
 	baseUrl string,
@@ -51,8 +47,6 @@ func NewGatewayRoutes(
 		httpClient:         httpClient,
 		sessionConfig:      sessionConfig,
 		oauthConfig:        oauthConfig,
-		authServer:         authServer,
-		externalAuthServer: externalAuthServer,
 		appServer:          appServer,
 		notificationConfig: notificationConfig,
 		baseUrl:            baseUrl,
@@ -455,14 +449,14 @@ func (self *GatewayRoutes) forward(
 
 func (self *GatewayRoutes) Authorize() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		endpoint, err := url.Parse(self.externalAuthServer + self.oauthConfig.AuthorizeUri)
+		endpoint, err := url.Parse(self.oauthConfig.RedirectAuthorizeUri.String())
 		if err != nil {
 			panic(err)
 		}
 
 		data := url.Values{}
 		data.Set("response_type", "code")
-		data.Set("client_id", self.oauthConfig.ClientID)
+		data.Set("client_id", self.oauthConfig.ClientID.String())
 		data.Set("redirect_uri", self.baseUrl+"/oauth/callback")
 		data.Set("state", "testing")
 		endpoint.RawQuery = data.Encode()
@@ -475,14 +469,14 @@ func (self *GatewayRoutes) Callback() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		code := r.URL.Query().Get("code")
 
-		tokenEndpoint := fmt.Sprintf("%s%s", self.authServer, self.oauthConfig.TokenUri)
+		tokenEndpoint := self.oauthConfig.TokenUri.String()
 
 		data := url.Values{}
 		data.Set("grant_type", "authorization_code")
 		data.Set("code", code)
 		data.Set("redirect_uri", self.baseUrl+"/oauth/callback")
-		data.Set("client_id", self.oauthConfig.ClientID)
-		data.Set("client_secret", self.oauthConfig.ClientSecret)
+		data.Set("client_id", self.oauthConfig.ClientID.String())
+		data.Set("client_secret", self.oauthConfig.ClientSecret.String())
 
 		tokenReq, err := http.NewRequestWithContext(
 			r.Context(),

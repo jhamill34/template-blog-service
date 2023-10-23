@@ -1,36 +1,44 @@
+# Required Environment Variables:
+# - BASE_URL
+# - CACHE_ADDRESS
+# - CACHE_PASSWORD
+# - SESSION_SECRET
+# - OAUTH_CLIENT_ID
+# - OAUTH_CLIENT_SECRET
+# - AUTH_SERVER_BASE_URL
+# - INTERNAL_AUTH_SERVER_BASE_URL
+
 server:
   port: 80
   idle_timeout: 60s
   read_timeout: 1s
   write_timeout: 2s
-  base_url: https://app.spedue.com
+  base_url: ${BASE_URL}
 
 cache:
-  address: redis_store:6379
-  password: password
+  address: ${CACHE_ADDRESS}
+  password: ${CACHE_PASSWORD}
 
 session:
   ttl: 3600s 
   cookie_ttl: 86400s 
-  key: SESSIONSECRET
+  key: ${SESSION_SECRET}
 
 notifications:
   timeout: 1s
 
-external_auth_server: https://auth.spedue.com
-auth_server: http://auth_service
-app_server: app_service
-
 oauth:
-  client_id: "efae5523-7585-4eae-8f4d-97897e0626f4"
-  client_secret: "965963cf-752d-4f0a-84ea-affba4e55d61"
-  authorize_uri: /oauth/authorize
-  token_uri: /oauth/token
+  client_id: ${OAUTH_CLIENT_ID}
+  client_secret: ${OAUTH_CLIENT_SECRET} 
+  redirect_authorize_uri: ${AUTH_SERVER_BASE_URL}/oauth/authorize
+  token_uri: http://${INTERNAL_AUTH_SERVER_DOMAIN}/oauth/token
+
+app_server: ${INTERNAL_APP_SERVER_DOMAIN}
 
 template:
   common: 
-    - "./templates/app/components/*.html"
+    - "./templates/components/*.html"
   paths:
-    - "./templates/app/pages/*.html"
+    - "./templates/pages/*.html"
 
 

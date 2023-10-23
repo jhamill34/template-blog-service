@@ -1,4 +1,4 @@
-package app
+package api
 
 import (
 	"context"
@@ -19,7 +19,7 @@ type App struct {
 	cleanup func(ctx context.Context)
 }
 
-func ConfigureApp() *App {
+func Configure() *App {
 	cfg, err := config.LoadAppConfig("configs/app.yaml")
 	if err != nil {
 		panic(err)
@@ -27,26 +27,32 @@ func ConfigureApp() *App {
 
 	publicKeyProvider := rca_signer.NewRemotePublicKeyProvider(
 		http.DefaultClient,
-		cfg.AuthServer+"/key/signer",
+		cfg.AuthServer.BaseUrl.String()+cfg.AuthServer.KeyPath,
 	)
 	signer := rca_signer.NewRcaSigner(publicKeyProvider, nil)
 
-	db := database.NewMySQLDbProvider(cfg.Database.Path)
+	db := database.NewMySQLDbProvider(cfg.Database.GetConnectionString())
 
-	kv := database.NewRedisProvider("APP:", cfg.Cache.Addr, cfg.Cache.Password)
+	kv := database.NewRedisProvider("APP:", cfg.Cache.Addr.String(), cfg.Cache.Password.String())
 
 	permissionModel := config.LoadRbacModel("configs/rbac_model.conf")
 	accessControlService := rbac.NewCasbinAccessControl(
 		permissionModel,
 		kv,
 		nil,
-		rbac.NewRemotePolicyProvider(cfg.AuthServer+"/policy", http.DefaultClient),
+		rbac.NewRemotePolicyProvider(
+			cfg.AuthServer.BaseUrl.String()+cfg.AuthServer.PolicyPath,
+			http.DefaultClient,
+		),
 	)
 
 	postDao := dao.NewPostDao(db)
 	postService := repositories.NewPostRepository(postDao, accessControlService)
 
-	subscriber := database.NewRedisSubscriberProvider(cfg.PubSub.Addr, cfg.PubSub.Password)
+	subscriber := database.NewRedisSubscriberProvider(
+		cfg.PubSub.Addr.String(),
+		cfg.PubSub.Password.String(),
+	)
 
 	go listenForPolicyInvalidation(context.Background(), subscriber, kv)
 

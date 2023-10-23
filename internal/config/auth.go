@@ -8,57 +8,57 @@ import (
 )
 
 type User struct {
-	Password string `yaml:"password"`
-	Email    string `yaml:"email"`
+	Password StringFromEnv `yaml:"password"`
+	Email    StringFromEnv `yaml:"email"`
 }
 
 type App struct {
-	ClientId     string `yaml:"client_id"`
-	ClientSecret string `yaml:"client_secret"`
-	RedirectUri  string `yaml:"redirect_uri"`
-	Name         string `yaml:"name"`
-	Description  string `yaml:"description"`
+	ClientId     StringFromEnv `yaml:"client_id"`
+	ClientSecret StringFromEnv `yaml:"client_secret"`
+	Name         string        `yaml:"name"`
+	Description  string        `yaml:"description"`
+	RedirectUri  StringFromEnv `yaml:"redirect_uri"`
 }
 
 type HashParams struct {
-	Iterations  uint32 `yaml:"iterations"`
-	Parallelism uint8  `yaml:"parallelism"`
-	Memory      uint32 `yaml:"memory"`
-	HashLength  uint32 `yaml:"hash_length"`
-	SaltLength  uint32 `yaml:"salt_length"`
-	Secret      string `yaml:"secret"`
+	Iterations  uint32        `yaml:"iterations"`
+	Parallelism uint8         `yaml:"parallelism"`
+	Memory      uint32        `yaml:"memory"`
+	HashLength  uint32        `yaml:"hash_length"`
+	SaltLength  uint32        `yaml:"salt_length"`
+	Secret      StringFromEnv `yaml:"secret"`
 }
 
 type EmailParams struct {
-	Domain     string `yaml:"domain"`
-	User       string `yaml:"user"`
-	SmtpDomain string `yaml:"smtp_domain"`
-	SmtpPort   int    `yaml:"smtp_port"`
-}
-
-type AuthConfig struct {
-	Server            ServerConfig             `yaml:"server"`
-	Database          DatabaseConfig           `yaml:"database"`
-	Template          TemplateConfig           `yaml:"template"`
-	PubSub            RedisConfig              `yaml:"pubsub"`
-	Cache             RedisConfig              `yaml:"cache"`
-	Notifications     NotificationsConfig      `yaml:"notifications"`
-	DefaultUser       *User                    `yaml:"default_user"`
-	DefaultApp        *App                     `yaml:"default_app"`
-	PasswordConfig    *HashParams              `yaml:"password_config"`
-	Session           SessionConfig            `yaml:"session"`
-	VerifyTTL         time.Duration            `yaml:"verify_ttl"`
-	PasswordForgotTTL time.Duration            `yaml:"password_forgot_ttl"`
-	InviteTTL         time.Duration            `yaml:"invite_ttl"`
-	AuthCodeTTL       time.Duration            `yaml:"auth_code_ttl"`
-	AccessToken       AccessTokenConfiguration `yaml:"access_token"`
-	Email             EmailParams              `yaml:"email"`
+	Domain     StringFromEnv `yaml:"domain"`
+	User       StringFromEnv `yaml:"user"`
+	SmtpDomain StringFromEnv `yaml:"smtp_domain"`
+	SmtpPort   int           `yaml:"smtp_port"`
 }
 
 type AccessTokenConfiguration struct {
 	PublicKeyPath  string        `yaml:"public_key_path"`
 	PrivateKeyPath string        `yaml:"private_key_path"`
 	TTL            time.Duration `yaml:"ttl"`
+}
+
+type AuthConfig struct {
+	Server            ServerConfig             `yaml:"server"`
+	Cache             RedisConfig              `yaml:"cache"`
+	PubSub            RedisConfig              `yaml:"pubsub"`
+	Database          DatabaseConfig           `yaml:"database"`
+	Notifications     NotificationsConfig      `yaml:"notifications"`
+	Template          TemplateConfig           `yaml:"template"`
+	DefaultUser       *User                    `yaml:"default_user"`
+	DefaultApp        *App                     `yaml:"default_app"`
+	PasswordConfig    *HashParams              `yaml:"password_config"`
+	VerifyTTL         time.Duration            `yaml:"verify_ttl"`
+	PasswordForgotTTL time.Duration            `yaml:"password_forgot_ttl"`
+	InviteTTL         time.Duration            `yaml:"invite_ttl"`
+	AuthCodeTTL       time.Duration            `yaml:"auth_code_ttl"`
+	AccessToken       AccessTokenConfiguration `yaml:"access_token"`
+	Session           SessionConfig            `yaml:"session"`
+	Email             EmailParams              `yaml:"email"`
 }
 
 func LoadAuthConfig(filename string) (AuthConfig, error) {

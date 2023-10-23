@@ -1,22 +1,38 @@
+# Required Environment Variables:
+# - BASE_URL
+# - CACHE_ADDRESS
+# - CACHE_PASSWORD
+# - PUBSUB_ADDRESS
+# - PUBSUB_PASSWORD
+# - INTERNAL_AUTH_SERVER_BASE_URL
+# - DB_USER
+# - DB_PASSWORD
+# - DB_HOST
+# - DB_NAME
+
 server:
   port: 80
   idle_timeout: 60s
   read_timeout: 1s
   write_timeout: 2s
-  base_url: https://api.spedue.com
+  base_url: ${BASE_URL}
 
 cache:
-  address: redis_store:6379
-  password: password
+  address: ${CACHE_ADDRESS}
+  password: ${CACHE_PASSWORD}
 
 pubsub:
-  address: redis_store:6379
-  password: password
+  address: ${PUBSUB_ADDRESS}
+  password: ${PUBSUB_PASSWORD}
 
-auth_server: http://auth_service
+auth_server: 
+  base_url: ${INTERNAL_AUTH_SERVER_BASE_URL}
+  key_path: /key/signer
+  policy_path: /policy
 
 database:
-  path: "app_user:app_password@tcp(mysql_store)/datadb?parseTime=true&multiStatements=true"
-  migrations:
-    - "./migrations/app/*.sql"
+  user: ${DB_USER}
+  pass: ${DB_PASSWORD}
+  host: ${DB_HOST}
+  db_name: ${DB_NAME}
 

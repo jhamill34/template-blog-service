@@ -7,11 +7,17 @@ import (
 )
 
 type AppConfig struct {
-	Server     ServerConfig   `yaml:"server"`
-	Database   DatabaseConfig `yaml:"database"`
-	PubSub     RedisConfig    `yaml:"pubsub"`
-	Cache      RedisConfig    `yaml:"cache"`
-	AuthServer string         `yaml:"auth_server"`
+	Server     ServerConfig     `yaml:"server"`
+	Database   DatabaseConfig   `yaml:"database"`
+	PubSub     RedisConfig      `yaml:"pubsub"`
+	Cache      RedisConfig      `yaml:"cache"`
+	AuthServer AuthServerConfig `yaml:"auth_server"`
+}
+
+type AuthServerConfig struct {
+	BaseUrl    StringFromEnv `yaml:"base_url"`
+	KeyPath    string        `yaml:"key_path"`
+	PolicyPath string        `yaml:"policy_path"`
 }
 
 func LoadAppConfig(filename string) (AppConfig, error) {

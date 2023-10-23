@@ -1,4 +1,4 @@
-package app
+package mail
 
 import (
 	"context"
@@ -18,7 +18,7 @@ type MailService struct {
 	server *email.EmailServer
 }
 
-func ConfigureMail() *MailService {
+func Configure() *MailService {
 	cfg, err := config.LoadMailConfig("configs/mail.yaml")
 	if err != nil {
 		panic(err)
@@ -31,7 +31,7 @@ func ConfigureMail() *MailService {
 					cfg.Forwarder.CommonPorts,
 					e.SigningOptions{
 						Selector:   cfg.Dkim.Selector,
-						Domain:     cfg.Dkim.Domain,
+						Domain:     cfg.Dkim.Domain.String(),
 						Headers:    cfg.Dkim.Headers,
 						PrivateKey: loadDKIMKey(cfg.Dkim.PrivateKeyPath),
 					},
