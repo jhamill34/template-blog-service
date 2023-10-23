@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"net/http"
+	"os"
 
 	"github.com/jhamill34/notion-provisioner/internal/config"
 	"github.com/jhamill34/notion-provisioner/internal/database"
@@ -20,7 +21,7 @@ type App struct {
 }
 
 func Configure() *App {
-	cfg, err := config.LoadAppConfig("configs/app.yaml")
+	cfg, err := config.LoadAppConfig(os.Getenv("CONFIG_FILE"))
 	if err != nil {
 		panic(err)
 	}
@@ -35,7 +36,7 @@ func Configure() *App {
 
 	kv := database.NewRedisProvider("APP:", cfg.Cache.Addr.String(), cfg.Cache.Password.String())
 
-	permissionModel := config.LoadRbacModel("configs/rbac_model.conf")
+	permissionModel := config.LoadRbacModel(os.Getenv("RBAC_MODEL_FILE"))
 	accessControlService := rbac.NewCasbinAccessControl(
 		permissionModel,
 		kv,

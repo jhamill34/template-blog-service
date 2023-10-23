@@ -3,6 +3,7 @@ package gateway
 import (
 	"context"
 	"net/http"
+	"os"
 
 	"github.com/jhamill34/notion-provisioner/internal/config"
 	"github.com/jhamill34/notion-provisioner/internal/database"
@@ -13,12 +14,12 @@ import (
 )
 
 type Gateway struct {
-	server transport.Server
+	server  transport.Server
 	cleanup func(ctx context.Context)
 }
 
 func Configure() *Gateway {
-	cfg, err := config.LoadGatewayConfig("configs/gateway.yaml")
+	cfg, err := config.LoadGatewayConfig(os.Getenv("CONFIG_FILE"))
 	if err != nil {
 		panic(err)
 	}
@@ -27,7 +28,11 @@ func Configure() *Gateway {
 		NewTemplateRepository(cfg.Template.Common...).
 		AddTemplates(cfg.Template.Paths...)
 
-	kv := database.NewRedisProvider("GATEWAY:", cfg.Cache.Addr.String(), cfg.Cache.Password.String())
+	kv := database.NewRedisProvider(
+		"GATEWAY:",
+		cfg.Cache.Addr.String(),
+		cfg.Cache.Password.String(),
+	)
 
 	sessionStore := session.NewRedisSessionStore(
 		kv,

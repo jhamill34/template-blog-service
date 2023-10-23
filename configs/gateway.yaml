@@ -37,8 +37,8 @@ app_server: ${INTERNAL_APP_SERVER_DOMAIN}
 
 template:
   common: 
-    - "./templates/components/*.html"
+    - "./templates/gateway/components/*.html"
   paths:
-    - "./templates/pages/*.html"
+    - "./templates/gateway/pages/*.html"
 
 

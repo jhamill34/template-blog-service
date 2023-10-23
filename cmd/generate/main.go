@@ -4,12 +4,21 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
+	"fmt"
 	"os"
 )
 
 func main() {
-	privateFile, err := os.OpenFile("private.pem", os.O_CREATE|os.O_WRONLY, 0600)
+	if len(os.Args) < 2 {
+		fmt.Println("Usage: go run main.go <name>")
+		os.Exit(1)
+	}
+
+	name := os.Args[1]
+
+	privateFile, err := os.OpenFile(name+"-key.pem", os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		panic(err)
 	}
@@ -19,21 +28,39 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	privateKeyBytes, err := x509.MarshalPKCS8PrivateKey(privateKey)
+	if err != nil {
+		panic(err)
+	}
+
 	pem.Encode(privateFile, &pem.Block{
-		Type:  "RSA PRIVATE KEY",
-		Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
+		Type:  "PRIVATE KEY",
+		Bytes: privateKeyBytes,
 	})
 
-	publicFile, err := os.OpenFile("public.pem", os.O_CREATE|os.O_WRONLY, 0600)
+	publicFile, err := os.OpenFile(name+".pem", os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		panic(err)
 	}
 	defer publicFile.Close()
 
-	publicKey := privateKey.PublicKey
+	publicKeyBytes, err := x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
+	if err != nil {
+		panic(err)
+	}
+
 	pem.Encode(publicFile, &pem.Block{
-		Type:  "RSA PUBLIC KEY",
-		Bytes: x509.MarshalPKCS1PublicKey(&publicKey),
+		Type:  "PUBLIC KEY",
+		Bytes: publicKeyBytes,
 	})
+
+	if os.Getenv("DKIM") == "true" {
+		publicKeyString := base64.StdEncoding.EncodeToString(publicKeyBytes)
+		fmt.Println(formatDNSRecord(publicKeyString))
+	}
 }
 
+func formatDNSRecord(key string) string {
+	return fmt.Sprintf("v=DKIM1;k=rsa;h=sha256;p=%s", key)
+}

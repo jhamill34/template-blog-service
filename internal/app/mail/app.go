@@ -19,7 +19,7 @@ type MailService struct {
 }
 
 func Configure() *MailService {
-	cfg, err := config.LoadMailConfig("configs/mail.yaml")
+	cfg, err := config.LoadMailConfig(os.Getenv("CONFIG_FILE"))
 	if err != nil {
 		panic(err)
 	}
@@ -33,7 +33,7 @@ func Configure() *MailService {
 						Selector:   cfg.Dkim.Selector,
 						Domain:     cfg.Dkim.Domain.String(),
 						Headers:    cfg.Dkim.Headers,
-						PrivateKey: loadDKIMKey(cfg.Dkim.PrivateKeyPath),
+						PrivateKey: loadDKIMKey(cfg.Dkim.PrivateKeyPath.String()),
 					},
 				),
 			),

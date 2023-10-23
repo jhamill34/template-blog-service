@@ -19,7 +19,7 @@ dkim:
     - Subject
     - Message-ID
     - Date
-  private_key_path: ./keys/dkim-private.pem
+  private_key_path: ${DKIM_PRIVATE_KEY}
 
 forwarder:
   common_ports: 

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"io"
 	"os"
 
 	"gopkg.in/yaml.v3"
@@ -23,3 +24,29 @@ func (e StringFromEnv) String() string {
 	return string(e)
 }
 
+type StringFromFile string
+
+func (f *StringFromFile) UnmarshalYAML(value *yaml.Node) error {
+	var s StringFromEnv
+	if err := value.Decode(&s); err != nil {
+		return err
+	}
+
+	file, err := os.Open(s.String())
+	if err != nil {
+		return err
+	}
+
+	data, err := io.ReadAll(file)
+	if err != nil {
+		return err
+	}
+
+	*f = StringFromFile(string(data))
+
+	return nil
+}
+
+func (f StringFromFile) String() string {
+	return string(f)
+}

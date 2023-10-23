@@ -37,8 +37,8 @@ type EmailParams struct {
 }
 
 type AccessTokenConfiguration struct {
-	PublicKeyPath  string        `yaml:"public_key_path"`
-	PrivateKeyPath string        `yaml:"private_key_path"`
+	PublicKeyPath  StringFromEnv `yaml:"public_key_path"`
+	PrivateKeyPath StringFromEnv `yaml:"private_key_path"`
 	TTL            time.Duration `yaml:"ttl"`
 }
 

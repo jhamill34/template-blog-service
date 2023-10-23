@@ -18,10 +18,10 @@ type ServerConfig struct {
 }
 
 type DatabaseConfig struct {
-	User   StringFromEnv `yaml:"user"`
-	Pass   StringFromEnv `yaml:"pass"`
-	Host   StringFromEnv `yaml:"host"`
-	DbName StringFromEnv `yaml:"db_name"`
+	User   StringFromEnv  `yaml:"user"`
+	Pass   StringFromFile `yaml:"pass"`
+	Host   StringFromEnv  `yaml:"host"`
+	DbName StringFromEnv  `yaml:"db_name"`
 }
 
 func (c DatabaseConfig) GetConnectionString() string {
@@ -35,8 +35,8 @@ func (c DatabaseConfig) GetConnectionString() string {
 }
 
 type RedisConfig struct {
-	Addr     StringFromEnv `yaml:"address"`
-	Password StringFromEnv `yaml:"password"`
+	Addr     StringFromEnv  `yaml:"address"`
+	Password StringFromFile `yaml:"password"`
 }
 
 type TemplateConfig struct {

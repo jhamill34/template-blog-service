@@ -27,7 +27,7 @@ type DkimConfig struct {
 	Selector       string        `yaml:"selector"`
 	Domain         StringFromEnv `yaml:"domain"`
 	Headers        []string      `yaml:"headers"`
-	PrivateKeyPath string        `yaml:"private_key_path"`
+	PrivateKeyPath StringFromEnv `yaml:"private_key_path"`
 }
 
 func LoadMailConfig(filename string) (MailerConfig, error) {

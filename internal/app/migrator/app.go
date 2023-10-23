@@ -1,6 +1,8 @@
 package migrator
 
 import (
+	"os"
+
 	"github.com/jhamill34/notion-provisioner/internal/config"
 	"github.com/jhamill34/notion-provisioner/internal/database"
 )
@@ -11,7 +13,7 @@ type Migrator struct {
 }
 
 func Configure() *Migrator {
-	cfg, err := config.LoadMigrationConfig("configs/migrator.yaml")
+	cfg, err := config.LoadMigrationConfig(os.Getenv("CONFIG_FILE"))
 	if err != nil {
 		panic(err)
 	}

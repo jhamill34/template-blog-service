@@ -45,9 +45,9 @@ notifications:
 
 template:
   common: 
-    - "./templates/components/*.html"
+    - "./templates/auth/components/*.html"
   paths:
-    - "./templates/pages/*.html"
+    - "./templates/auth/pages/*.html"
 
 default_user:
   email: ${DEFAULT_USER_EMAIL}
@@ -74,8 +74,8 @@ invite_ttl: 86400s
 auth_code_ttl: 60s
 
 access_token:
-  public_key_path: ./keys/public.pem
-  private_key_path: ./keys/private.pem
+  public_key_path: ${ACCESS_TOKEN_PUBLIC_KEY}
+  private_key_path: ${ACCESS_TOKEN_PRIVATE_KEY}
   ttl: 3600s
 
 session:

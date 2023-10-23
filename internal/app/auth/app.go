@@ -29,13 +29,13 @@ type Auth struct {
 }
 
 func Configure() *Auth {
-	cfg, err := config.LoadAuthConfig("configs/auth.yaml")
+	cfg, err := config.LoadAuthConfig(os.Getenv("CONFIG_FILE"))
 	if err != nil {
 		panic(err)
 	}
 
-	privateKey := loadPrivateKey(cfg.AccessToken.PrivateKeyPath)
-	publicKey := loadPublicKey(cfg.AccessToken.PublicKeyPath)
+	privateKey := loadPrivateKey(cfg.AccessToken.PrivateKeyPath.String())
+	publicKey := loadPublicKey(cfg.AccessToken.PublicKeyPath.String())
 	signer := rca_signer.NewRcaSigner(rca_signer.NewStaticPublicKeyProvider(publicKey), privateKey)
 
 	db := database.NewMySQLDbProvider(cfg.Database.GetConnectionString())
@@ -100,7 +100,7 @@ func Configure() *Auth {
 	orgDao := dao.NewOrganizationDao(db)
 
 	publisher := database.NewRedisPublisherProvider(cfg.PubSub.Addr.String(), cfg.PubSub.Password.String())
-	permissionModel := config.LoadRbacModel("configs/rbac_model.conf")
+	permissionModel := config.LoadRbacModel(os.Getenv("RBAC_MODEL_FILE"))
 	policyProvider := rbac.NewDatabasePolicyProvider(userDao, orgDao)
 	accessControlService := rbac.NewCasbinAccessControl(
 		permissionModel,
@@ -242,12 +242,16 @@ func loadPublicKey(path string) *rsa.PublicKey {
 	}
 
 	block, _ := pem.Decode(publicKeyBytes)
-	publicKey, err := x509.ParsePKCS1PublicKey(block.Bytes)
+	publicKey, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
 		panic(err)
 	}
 
-	return publicKey
+	if publicKey, ok := publicKey.(*rsa.PublicKey); ok {
+		return publicKey
+	}
+
+	panic("Could not load public key")
 }
 
 func loadPrivateKey(path string) *rsa.PrivateKey {
@@ -263,10 +267,14 @@ func loadPrivateKey(path string) *rsa.PrivateKey {
 	}
 
 	block, _ := pem.Decode(privateKeyBytes)
-	privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	privateKey, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err != nil {
 		panic(err)
 	}
 
-	return privateKey
+	if privateKey, ok := privateKey.(*rsa.PrivateKey); ok {
+		return privateKey
+	}
+
+	panic("Not an RSA private key")
 }
