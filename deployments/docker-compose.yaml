@@ -2,7 +2,7 @@ version: '3.7'
 
 services: 
   auth_service:
-    image: auth_service:latest
+    image: ${REGISTRY_ENDPOINT}/${STACK_NAME}/auth_service:latest
     environment:
       BASE_URL: "https://auth.${ROOT_DOMAIN}"
       CONFIG_FILE: /auth_config
@@ -57,7 +57,7 @@ services:
   
 
   app_service:
-    image: app_service:latest
+    image: ${REGISTRY_ENDPOINT}/${STACK_NAME}/app_service:latest
     environment:
       BASE_URL: "https://api.${ROOT_DOMAIN}"
       CONFIG_FILE: /app_config
@@ -95,7 +95,7 @@ services:
 
 
   gateway_service:
-    image: gateway_service:latest
+    image: ${REGISTRY_ENDPOINT}/${STACK_NAME}/gateway_service:latest
     environment:
       BASE_URL: "https://app.${ROOT_DOMAIN}"
       CONFIG_FILE: /gateway_config
@@ -132,7 +132,7 @@ services:
 
 
   email_service:
-    image: mailer:latest
+    image: ${REGISTRY_ENDPOINT}/${STACK_NAME}/mailer:latest
     environment:
       EMAIL_DOMAIN: ${ROOT_DOMAIN}
       CONFIG_FILE: /mail_config
@@ -159,7 +159,7 @@ services:
   
 
   cache_store:
-    image: cache:latest
+    image: ${REGISTRY_ENDPOINT}/${STACK_NAME}/cache:latest
     environment:
       CACHE_PASSWORD: /run/secrets/cache_password
     secrets:
@@ -187,10 +187,9 @@ services:
 
 
   database_store:
-    image: database:latest
+    image: ${REGISTRY_ENDPOINT}/${STACK_NAME}/database:latest
     environment:
       MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db_root_password
-      MYSQL_ROOT_HOST: "%"
       MYSQL_DATABASE: datadb
       DB_AUTH_USER: auth_user
       DB_AUTH_PASSWORD_FILE: /run/secrets/db_auth_password
@@ -225,7 +224,7 @@ services:
           - node.labels.database == true
 
   migration_service:
-    image: migrator:latest
+    image: ${REGISTRY_ENDPOINT}/${STACK_NAME}/migrator:latest
     environment:
       CONFIG_FILE: /migrator_config
       DB_USER: migrator_user
@@ -244,7 +243,7 @@ services:
   
 
   proxy:
-    image: proxy:latest
+    image: ${REGISTRY_ENDPOINT}/${STACK_NAME}/proxy:latest
     ports:
       - "443:443"
     networks:

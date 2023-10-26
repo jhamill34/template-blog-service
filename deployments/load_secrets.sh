@@ -1,6 +1,7 @@
 #/bin/bash 
 
 set -o allexport 
+
 source ./secrets/env set
 
 echo $DB_ROOT_PASSWORD | docker secret create db_root_password -
