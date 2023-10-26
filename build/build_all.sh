@@ -10,3 +10,5 @@ docker build . -f ./build/database/Dockerfile -t database:latest
 docker build . -f ./build/cache/Dockerfile -t cache:latest
 docker build . -f ./build/proxy/Dockerfile -t proxy:latest
 
+docker build . -f ./build/key_rotation/Dockerfile -t key_rotation:latest
+

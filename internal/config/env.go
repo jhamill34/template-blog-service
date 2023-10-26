@@ -3,6 +3,7 @@ package config
 import (
 	"io"
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -42,7 +43,7 @@ func (f *StringFromFile) UnmarshalYAML(value *yaml.Node) error {
 		return err
 	}
 
-	*f = StringFromFile(string(data))
+	*f = StringFromFile(strings.TrimSpace(string(data)))
 
 	return nil
 }

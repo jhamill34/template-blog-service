@@ -16,9 +16,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	keysDir := os.Getenv("KEYS_DIR")
+
 	name := os.Args[1]
 
-	privateFile, err := os.OpenFile(name+"-key.pem", os.O_CREATE|os.O_WRONLY, 0600)
+	privateFile, err := os.OpenFile(keysDir+"/"+name+"-key.pem", os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		panic(err)
 	}
@@ -39,7 +41,7 @@ func main() {
 		Bytes: privateKeyBytes,
 	})
 
-	publicFile, err := os.OpenFile(name+".pem", os.O_CREATE|os.O_WRONLY, 0600)
+	publicFile, err := os.OpenFile(keysDir+"/"+name+".pem", os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		panic(err)
 	}
@@ -55,9 +57,16 @@ func main() {
 		Bytes: publicKeyBytes,
 	})
 
-	if os.Getenv("DKIM") == "true" {
+	if name == "dkim" {
+		dkimRecord, err := os.OpenFile(keysDir+"/dkim-record.txt", os.O_CREATE|os.O_WRONLY, 0600)
+		if err != nil {
+			panic(err)
+		}
+		defer dkimRecord.Close()
+
 		publicKeyString := base64.StdEncoding.EncodeToString(publicKeyBytes)
-		fmt.Println(formatDNSRecord(publicKeyString))
+
+		dkimRecord.WriteString(formatDNSRecord(publicKeyString))
 	}
 }
 

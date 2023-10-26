@@ -1,0 +1,5 @@
+account_key_path: ${ACCOUNT_KEY_PATH}
+cert_path: ${KEYS_DIR}/sslcert.pem 
+key_path: ${KEYS_DIR}/sslkey.pem
+dns_domains:
+  - "*.${ROOT_DOMAIN}"

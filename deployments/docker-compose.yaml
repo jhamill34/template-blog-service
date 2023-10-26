@@ -1,32 +1,12 @@
-version: '3'
+version: '3.7'
 
-services:
-  migration_service:
-    image: migrator:latest
-    environment:
-      CONFIG_FILE: /migrator_config
-      DB_USER: root
-      DB_PASSWORD: /run/secrets/db_root_password
-      DB_HOST: database_store
-      DB_NAME: datadb
-    networks:
-      - main
-    secrets:
-      - db_root_password
-    configs:
-      - migrator_config
-    depends_on:
-      database_store:
-        condition: service_healthy
-
-
+services: 
   auth_service:
-    image: auth_server:latest
-    container_name: auth_service
+    image: auth_service:latest
     environment:
       BASE_URL: "https://auth.${ROOT_DOMAIN}"
       CONFIG_FILE: /auth_config
-      RBAC_MODEL_FILE: /rbac_model
+      RBAC_MODEL_FILE: /rbac_model_config
       APP_SERVER_BASE_URL: "https://app.${ROOT_DOMAIN}"
       CACHE_ADDRESS: cache_store:6379
       CACHE_PASSWORD: /run/secrets/cache_password
@@ -58,23 +38,30 @@ services:
       - access_token_private_key
     configs:
       - auth_config
-      - rbac_model
+      - rbac_model_config
     networks:
       - main
-    depends_on:
-      migration_service:
-        condition: service_completed_successfully
-      cache_store:
-        condition: service_healthy
+    deploy:
+      endpoint_mode: vip
+      replicas: 1
+      mode: replicated
+      resources:
+        reservations:
+          cpus: '0.25'
+          memory: 25M
+        # limits: {}
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 10
   
 
   app_service:
     image: app_service:latest
-    container_name: app_service
     environment:
       BASE_URL: "https://api.${ROOT_DOMAIN}"
       CONFIG_FILE: /app_config
-      RBAC_MODEL_FILE: /rbac_model
+      RBAC_MODEL_FILE: /rbac_model_config
       CACHE_ADDRESS: cache_store:6379
       CACHE_PASSWORD: /run/secrets/cache_password
       PUBSUB_ADDRESS: cache_store:6379
@@ -89,19 +76,26 @@ services:
       - db_app_password
     configs:
       - app_config
-      - rbac_model
+      - rbac_model_config
     networks:
       - main
-    depends_on:
-      migration_service:
-        condition: service_completed_successfully
-      cache_store:
-        condition: service_healthy
+    deploy:
+      endpoint_mode: vip
+      replicas: 1
+      mode: replicated
+      resources:
+        reservations:
+          cpus: '0.25'
+          memory: 25M
+        # limits: {}
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 10
 
 
   gateway_service:
     image: gateway_service:latest
-    container_name: gateway_service
     environment:
       BASE_URL: "https://app.${ROOT_DOMAIN}"
       CONFIG_FILE: /gateway_config
@@ -122,13 +116,22 @@ services:
       - gateway_config
     networks:
       - main
-    depends_on:
-      cache_store:
-        condition: service_healthy
+    deploy:
+      endpoint_mode: vip
+      replicas: 1
+      mode: replicated
+      resources:
+        reservations:
+          cpus: '0.25'
+          memory: 25M
+        # limits: {}
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 10
 
 
   email_service:
-    container_name: email_service
     image: mailer:latest
     environment:
       EMAIL_DOMAIN: ${ROOT_DOMAIN}
@@ -140,29 +143,23 @@ services:
       - mail_config
     networks:
       - main
-  
-
-  database_store:
-    image: database:latest
-    container_name: database_store
-    networks:
-      - main
-    environment:
-      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db_root_password
-      MYSQL_DATABASE: datadb
-      DB_AUTH_USER: auth_user
-      INITIAL_DB_AUTH_PASSWORD: ${DB_AUTH_PASSWORD}
-      DB_APP_USER: app_user
-      INITIAL_DB_APP_PASSWORD: ${DB_APP_PASSWORD}
-    secrets:
-      - db_root_password
-    volumes:
-      - database_data:/var/lib/mysql
+    deploy:
+      endpoint_mode: vip
+      replicas: 1
+      mode: replicated
+      resources:
+        reservations:
+          cpus: '0.25'
+          memory: 25M
+        # limits: {}
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 10
   
 
   cache_store:
     image: cache:latest
-    container_name: cache_store 
     environment:
       CACHE_PASSWORD: /run/secrets/cache_password
     secrets:
@@ -171,10 +168,83 @@ services:
       - main
     volumes:
       - cache_data:/data
+    deploy:
+      endpoint_mode: vip
+      replicas: 1
+      mode: replicated
+      resources:
+        reservations:
+          cpus: '0.25'
+          memory: 25M
+        # limits: {}
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 10
+      placement:
+        constraints:
+          - node.labels.cache == true
+
+
+  database_store:
+    image: database:latest
+    environment:
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db_root_password
+      MYSQL_ROOT_HOST: "%"
+      MYSQL_DATABASE: datadb
+      DB_AUTH_USER: auth_user
+      DB_AUTH_PASSWORD_FILE: /run/secrets/db_auth_password
+      DB_APP_USER: app_user
+      DB_APP_PASSWORD_FILE: /run/secrets/db_app_password
+      DB_MIGRATOR_USER: migrator_user
+      DB_MIGRATOR_PASSWORD_FILE: /run/secrets/db_migrator_password
+    secrets:
+      - db_root_password
+      - db_app_password
+      - db_auth_password
+      - db_migrator_password
+    networks:
+      - main
+    volumes:
+      - database_data:/var/lib/mysql
+    deploy:
+      endpoint_mode: vip
+      replicas: 1
+      mode: replicated
+      resources:
+        reservations:
+          cpus: '0.25'
+          memory: 25M
+        # limits: {}
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 10
+      placement:
+        constraints:
+          - node.labels.database == true
+
+  migration_service:
+    image: migrator:latest
+    environment:
+      CONFIG_FILE: /migrator_config
+      DB_USER: migrator_user
+      DB_PASSWORD: /run/secrets/db_migrator_password
+      DB_HOST: database_store
+      DB_NAME: datadb
+    networks:
+      - main
+    secrets:
+      - db_migrator_password
+    configs:
+      - migrator_config
+    deploy:
+      restart_policy:
+        condition: none
   
+
   proxy:
     image: proxy:latest
-    container_name: reverse_proxy
     ports:
       - "443:443"
     networks:
@@ -189,13 +259,20 @@ services:
     secrets:
       - ssl_public_key
       - ssl_private_key
-    depends_on:
-      auth_service:
-        condition: service_started
-      app_service:
-        condition: service_started
-      gateway_service:
-        condition: service_started
+    deploy:
+      endpoint_mode: vip
+      replicas: 1
+      mode: replicated
+      resources:
+        reservations:
+          cpus: '0.25'
+          memory: 25M
+        # limits: {}
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 10
+
 
 volumes:
   database_data:
@@ -203,50 +280,50 @@ volumes:
 
 networks:
   main:
-    name: main
-    driver: bridge
-
-secrets:
-  db_root_password:
-    environment: "DB_ROOT_PASSWORD"
-  db_auth_password:
-    environment: "DB_AUTH_PASSWORD"
-  db_app_password:
-    environment: "DB_APP_PASSWORD"
-  cache_password:
-    environment: "CACHE_PASSWORD"
-  oauth_client_id:
-    environment: "DEFAULT_OAUTH_CLIENT_ID"
-  oauth_client_secret:
-    environment: "DEFAULT_OAUTH_CLIENT_SECRET"
-  auth_token_secret:
-    environment: "AUTH_TOKEN_SECRET"
-  auth_session_secret:
-    environment: "AUTH_SESSION_SECRET"
-  app_session_secret:
-    environment: "APP_SESSION_SECRET"
-  access_token_public_key:
-    file: ../keys/token.pem
-  access_token_private_key:
-    file: ../keys/token-key.pem
-  dkim_private_key:
-    file: ../keys/dkim-key.pem
-  ssl_public_key:
-    file: ../keys/_wildcard.joshrasmussen.dev.pem
-  ssl_private_key:
-    file: ../keys/_wildcard.joshrasmussen.dev-key.pem
+    driver: overlay
 
 configs:
   auth_config:
-    file: ../configs/auth.yaml
+    external: true
   app_config:
-    file: ../configs/app.yaml
+    external: true
   gateway_config:
-    file: ../configs/gateway.yaml
+    external: true
   mail_config:
-    file: ../configs/mail.yaml
+    external: true
   migrator_config:
-    file: ../configs/migrator.yaml
-  rbac_model:
-    file: ../configs/rbac_model.conf
+    external: true
+  rbac_model_config:
+    external: true
 
+secrets:
+  db_root_password:
+    external: true
+  db_auth_password:
+    external: true
+  db_app_password:
+    external: true
+  db_migrator_password:
+    external: true
+  cache_password:
+    external: true
+  oauth_client_id:
+    external: true
+  oauth_client_secret:
+    external: true
+  auth_token_secret:
+    external: true
+  auth_session_secret:
+    external: true
+  app_session_secret:
+    external: true
+  access_token_public_key:
+    external: true
+  access_token_private_key:
+    external: true
+  dkim_private_key:
+    external: true
+  ssl_public_key:
+    external: true
+  ssl_private_key:
+    external: true

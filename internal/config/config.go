@@ -25,13 +25,15 @@ type DatabaseConfig struct {
 }
 
 func (c DatabaseConfig) GetConnectionString() string {
-	return fmt.Sprintf(
+	conn := fmt.Sprintf(
 		"%s:%s@tcp(%s)/%s?parseTime=true&multiStatements=true",
 		c.User,
 		c.Pass,
 		c.Host,
 		c.DbName,
 	)
+
+	return conn
 }
 
 type RedisConfig struct {

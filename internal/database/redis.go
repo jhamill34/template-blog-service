@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -17,10 +18,27 @@ type RedisProvider struct {
 // Get implements KeyValueStoreProvider.
 func (self *RedisProvider) Get() KeyValueStore {
 	if self.store == nil {
-		self.store = NewRedisStore(self.prefix, redis.NewClient(&redis.Options{
+		client := redis.NewClient(&redis.Options{
 			Addr:     self.addr,
 			Password: self.password,
-		}))
+		})
+
+		var err error
+		for i := 0; i < 10; i++ {
+			log.Println("Trying to ping redis")
+			err = client.Ping(context.Background()).Err()
+			if err == nil {
+				break
+			}
+
+			time.Sleep(5 * time.Second)
+		}
+
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+
+		self.store = NewRedisStore(self.prefix, client)
 	}
 
 	return self.store

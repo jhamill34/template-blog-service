@@ -2,6 +2,8 @@ package database
 
 import (
 	"context"
+	"log"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -15,11 +17,28 @@ type RedisPublisherProvider struct {
 // Get implements PublisherProvider.
 func (self *RedisPublisherProvider) Get() Publisher {
 	if self.publisher == nil {
+		client := redis.NewClient(&redis.Options{
+			Addr:     self.addr,
+			Password: self.password,
+		})
+
+		var err error
+		for i := 0; i < 10; i++ {
+			log.Println("Trying to ping redis")
+			err = client.Ping(context.Background()).Err()
+			if err == nil {
+				break
+			}
+
+			time.Sleep(5 * time.Second)
+		}
+
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+
 		self.publisher = &RedisPublisher{
-			redisClient: redis.NewClient(&redis.Options{
-				Addr:     self.addr,
-				Password: self.password,
-			}),
+			redisClient: client,
 		}
 	}
 
@@ -67,11 +86,28 @@ type RedisSubscriberProvider struct {
 
 func (self *RedisSubscriberProvider) Get() Subscriber {
 	if self.subscriber == nil {
+		client := redis.NewClient(&redis.Options{
+			Addr:     self.addr,
+			Password: self.password,
+		})
+
+		var err error
+		for i := 0; i < 10; i++ {
+			log.Println("Trying to ping redis")
+			err = client.Ping(context.Background()).Err()
+			if err == nil {
+				break
+			}
+
+			time.Sleep(5 * time.Second)
+		}
+
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+
 		self.subscriber = &RedisSubscriber{
-			redisClient: redis.NewClient(&redis.Options{
-				Addr:     self.addr,
-				Password: self.password,
-			}),
+			redisClient: client,
 		}
 	}
 
