@@ -49,7 +49,7 @@ func (f *EmailForwarder) HandleMessage(ctx context.Context, message *models.Enve
 }
 
 func forward(client *smtp.Client, message *models.Envelope, options SigningOptions) error {
-	if err := client.Hello("joshrasmussen.dev"); err != nil {
+	if err := client.Hello(options.Domain); err != nil {
 		return err
 	}
 

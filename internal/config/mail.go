@@ -8,15 +8,22 @@ import (
 )
 
 type MailerConfig struct {
-	Port           int             `yaml:"port"`
-	Protocol       string          `yaml:"protocol"`
-	ReadTimeout    time.Duration   `yaml:"read_timeout"`
-	WriteTimeout   time.Duration   `yaml:"write_timeout"`
-	DataTimeout    time.Duration   `yaml:"data_timeout"`
-	MaxMessageSize int             `yaml:"max_message_size"`
-	MaxRecipients  int             `yaml:"max_recipients"`
-	Dkim           DkimConfig      `yaml:"dkim"`
-	Forwarder      ForwarderConfig `yaml:"forwarder"`
+	Port            int              `yaml:"port"`
+	Protocol        string           `yaml:"protocol"`
+	ReadTimeout     time.Duration    `yaml:"read_timeout"`
+	WriteTimeout    time.Duration    `yaml:"write_timeout"`
+	DataTimeout     time.Duration    `yaml:"data_timeout"`
+	MaxMessageSize  int              `yaml:"max_message_size"`
+	MaxRecipients   int              `yaml:"max_recipients"`
+	Dkim            DkimConfig       `yaml:"dkim"`
+	Forwarder       ForwarderConfig  `yaml:"forwarder"`
+	TLS             TLSConfiguration `yaml:"tls"`
+	AuthCredentials StringFromFile   `yaml:"auth_credentials"`
+}
+
+type TLSConfiguration struct {
+	CertificatePath StringFromEnv `yaml:"certificate_path"`
+	KeyPath         StringFromEnv `yaml:"key_path"`
 }
 
 type ForwarderConfig struct {

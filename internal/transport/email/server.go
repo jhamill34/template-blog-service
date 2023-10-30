@@ -55,7 +55,7 @@ func (s *EmailServer) Start(ctx context.Context) {
 func (s *EmailServer) HandleConnection(ctx context.Context, conn net.Conn) {
 	defer conn.Close()
 
-	session := NewSession(ctx, conn, false, &s.config)
+	session := NewSession(ctx, conn, &s.config)
 	session.WriteResponse(Response{
 		Code:    220,
 		Message: "email_service ESMTP ready",
@@ -73,6 +73,7 @@ func (s *EmailServer) HandleConnection(ctx context.Context, conn net.Conn) {
 		if cmd.Verb() == "STARTTLS" {
 			if s.UpgradeTLS(ctx, conn, session) {
 				cmd.Reset()
+				cmd.WithContext(context.WithValue(cmd.Context(), "tls", true))
 			}
 		} else {
 			s.router.Handle(&cmd, session)
@@ -82,8 +83,16 @@ func (s *EmailServer) HandleConnection(ctx context.Context, conn net.Conn) {
 	}
 }
 
+func TLSFromContext(ctx context.Context) bool {
+	isTls, ok := ctx.Value("tls").(bool)
+	if !ok {
+		return false
+	}
+	return isTls
+}
+
 func (s *EmailServer) UpgradeTLS(ctx context.Context, conn net.Conn, session *Session) bool {
-	if session.tls {
+	if TLSFromContext(ctx) {
 		session.WriteResponse(Response{
 			Code:    502,
 			Message: "TLS already established",
@@ -106,6 +115,7 @@ func (s *EmailServer) UpgradeTLS(ctx context.Context, conn net.Conn, session *Se
 	})
 
 	if err := tlsConn.Handshake(); err != nil {
+		log.Println("TLS handshake error: ", err)
 		session.WriteResponse(Response{
 			Code:    550,
 			Message: "Handshake error",
@@ -113,13 +123,15 @@ func (s *EmailServer) UpgradeTLS(ctx context.Context, conn net.Conn, session *Se
 		return false
 	}
 
-	*session = *NewSession(ctx, tlsConn, true, &s.config)
+	log.Println("TLS established")
+
+	*session = *NewSession(ctx, tlsConn, &s.config)
 
 	return true
 }
 
 type ResponseWriter interface {
-	WriteResponse(response Response)
+	WriteResponse(response fmt.Stringer)
 	SetDeadline(t time.Time)
 	Close()
 }
@@ -161,14 +173,11 @@ type Session struct {
 	scanner *bufio.Scanner
 
 	config *config.MailerConfig
-
-	tls bool
 }
 
 func NewSession(
 	ctx context.Context,
 	conn net.Conn,
-	tls bool,
 	config *config.MailerConfig,
 ) *Session {
 	reader := bufio.NewReader(conn)
@@ -182,7 +191,6 @@ func NewSession(
 		writer:  writer,
 		scanner: scanner,
 		config:  config,
-		tls:     tls,
 	}
 }
 
@@ -192,6 +200,7 @@ type Request struct {
 	verb       string
 	args       []string
 	reader     *bufio.Reader
+	scanner    *bufio.Scanner
 
 	config *config.MailerConfig
 }
@@ -201,6 +210,7 @@ func RequestFromString(
 	rstCtx context.Context,
 	cmd string,
 	reader *bufio.Reader,
+	scanner *bufio.Scanner,
 	config *config.MailerConfig,
 ) (Request, error) {
 	fields := strings.Fields(cmd)
@@ -220,6 +230,7 @@ func RequestFromString(
 			verb:       verb,
 			args:       args,
 			reader:     reader,
+			scanner:    scanner,
 			config:     config,
 		}, nil
 	}
@@ -275,6 +286,14 @@ func (c *Request) Body() ([]byte, error) {
 	return nil, ErrMaxBodyLength
 }
 
+func (c *Request) Prompt() (string, error) {
+	if c.scanner.Scan() {
+		return c.scanner.Text(), nil
+	}
+
+	return "", c.scanner.Err()
+}
+
 func (s *Session) HasNextCommand() bool {
 	return s.scanner.Scan()
 }
@@ -285,7 +304,7 @@ func (s *Session) NextCommand(ctx context.Context) (Request, error) {
 	}
 
 	line := s.scanner.Text()
-	return RequestFromString(ctx, s.ctx, line, s.reader, s.config)
+	return RequestFromString(ctx, s.ctx, line, s.reader, s.scanner, s.config)
 }
 
 type Response struct {
@@ -297,7 +316,7 @@ func (r Response) String() string {
 	return fmt.Sprintf("%d %s\r\n", r.Code, r.Message)
 }
 
-func (s *Session) WriteResponse(response Response) {
+func (s *Session) WriteResponse(response fmt.Stringer) {
 	s.writer.WriteString(response.String())
 	log.Printf("Response: %s", response.String())
 	s.conn.SetWriteDeadline(time.Now().Add(s.config.WriteTimeout))

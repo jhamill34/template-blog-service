@@ -3,10 +3,12 @@ package mail
 import (
 	"context"
 	"crypto/rsa"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/jhamill34/notion-provisioner/internal/config"
 	e "github.com/jhamill34/notion-provisioner/internal/services/email"
@@ -23,10 +25,24 @@ func Configure() *MailService {
 	if err != nil {
 		panic(err)
 	}
+	cert, err := tls.LoadX509KeyPair(cfg.TLS.CertificatePath.String(), cfg.TLS.KeyPath.String())
+	if err != nil {
+		panic(err)
+	}
+
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{cert},
+	}
+
+	credentials := strings.Split(cfg.AuthCredentials.String(), ":")
+	if len(credentials) != 2 {
+		panic("Invalid auth credentials in configuration")
+	}
 
 	return &MailService{
 		email.NewEmailServer(
 			smtp.SmtpProtocolRouter(
+				cfg.Dkim.Domain.String(),
 				e.NewEmailForwarder(
 					cfg.Forwarder.CommonPorts,
 					e.SigningOptions{
@@ -36,8 +52,9 @@ func Configure() *MailService {
 						PrivateKey: loadDKIMKey(cfg.Dkim.PrivateKeyPath.String()),
 					},
 				),
+				e.NewAuthFromConfigHandler(credentials[0], credentials[1]),
 			),
-			nil,
+			tlsConfig,
 			cfg,
 		),
 	}

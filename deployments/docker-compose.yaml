@@ -2,7 +2,7 @@ version: '3.7'
 
 services: 
   auth_service:
-    image: ${REGISTRY_ENDPOINT}/${STACK_NAME}/auth_service:latest
+    image: auth_service:latest
     environment:
       BASE_URL: "https://auth.${ROOT_DOMAIN}"
       CONFIG_FILE: /auth_config
@@ -25,6 +25,7 @@ services:
       EMAIL_DOMAIN: ${ROOT_DOMAIN}
       EMAIL_USER: admin
       SMTP_DOMAIN: email_service
+      SMTP_CREDENTIALS_FILE: /run/secrets/email_credentials
       ACCESS_TOKEN_PUBLIC_KEY: /run/secrets/access_token_public_key
       ACCESS_TOKEN_PRIVATE_KEY: /run/secrets/access_token_private_key
     secrets: 
@@ -36,6 +37,7 @@ services:
       - auth_session_secret
       - access_token_public_key
       - access_token_private_key
+      - email_credentials
     configs:
       - auth_config
       - rbac_model_config
@@ -132,13 +134,19 @@ services:
 
 
   email_service:
-    image: ${REGISTRY_ENDPOINT}/${STACK_NAME}/mailer:latest
+    image: mailer:latest
     environment:
       EMAIL_DOMAIN: ${ROOT_DOMAIN}
       CONFIG_FILE: /mail_config
       DKIM_PRIVATE_KEY: /run/secrets/dkim_private_key
+      TLS_CERTIFICATE_PATH: /run/secrets/mail_ssl_cert
+      TLS_KEY_PATH: /run/secrets/mail_ssl_key
+      CREDENTIALS_FILE: /run/secrets/email_credentials
     secrets:
       - dkim_private_key
+      - mail_ssl_cert
+      - mail_ssl_key
+      - email_credentials
     configs:
       - mail_config
     networks:
@@ -326,3 +334,10 @@ secrets:
     external: true
   ssl_private_key:
     external: true
+  mail_ssl_cert:
+    external: true
+  mail_ssl_key: 
+    external: true
+  email_credentials:
+    external: true
+

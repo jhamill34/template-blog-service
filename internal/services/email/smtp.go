@@ -2,28 +2,40 @@ package email
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
+	"log"
 	"net/smtp"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 )
 
 type SmtpSender struct {
-	smtpServer string
-	user       string
-	domain     string
+	smtpServer   string
+	smtpUser     string
+	smtpPassword string
+	user         string
+	domain       string
+	tlsConfig    *tls.Config
 }
 
 func NewSmtpSender(
 	smtpServer string,
+	smtpUser string,
+	smtpPassword string,
 	user string,
 	domain string,
+	tlsConfig *tls.Config,
 ) *SmtpSender {
 	return &SmtpSender{
-		smtpServer: smtpServer,
-		user:       user,
-		domain:     domain,
+		smtpServer:   smtpServer,
+		smtpUser:     smtpUser,
+		smtpPassword: smtpPassword,
+		user:         user,
+		domain:       domain,
+		tlsConfig:    tlsConfig,
 	}
 }
 
@@ -34,15 +46,23 @@ func (self *SmtpSender) SendEmail(
 	subject string,
 	body string,
 ) error {
+	log.Println("DIAL")
 	client, err := smtp.Dial(self.smtpServer)
 	if err != nil {
 		return err
 	}
 
-	fromEmail := fmt.Sprintf("%s@%s", self.user, self.domain)
+	log.Println("STARTTLS")
+	if err := client.StartTLS(self.tlsConfig); err != nil {
+		return err
+	}
 
-	//TODO: Say hello from the defined server
-	//TODO: auth
+	host := strings.Split(self.smtpServer, ":")[0]
+	if err := client.Auth(smtp.PlainAuth("", self.smtpUser, self.smtpPassword, host)); err != nil {
+		return err
+	}
+
+	fromEmail := fmt.Sprintf("%s@%s", self.user, self.domain)
 
 	if err := client.Mail(fromEmail); err != nil {
 		return err
@@ -53,12 +73,12 @@ func (self *SmtpSender) SendEmail(
 	}
 
 	headers := map[string]string{
-		"Message-ID": fmt.Sprintf("<%s@%s>", uuid.New().String(), self.domain),
-		"Subject":    subject,
-		"From":       fmt.Sprintf("<%s>", fromEmail),
-		"To":         fmt.Sprintf("<%s>", to),
+		"Message-ID":   fmt.Sprintf("<%s@%s>", uuid.New().String(), self.domain),
+		"Subject":      subject,
+		"From":         fmt.Sprintf("<%s>", fromEmail),
+		"To":           fmt.Sprintf("<%s>", to),
 		"Content-Type": "text/html",
-		"Date": time.Now().Format(time.RFC1123Z),
+		"Date":         time.Now().Format(time.RFC1123Z),
 	}
 
 	writer, err := client.Data()

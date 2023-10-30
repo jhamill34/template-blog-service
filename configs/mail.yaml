@@ -1,7 +1,7 @@
 # Required Environement Variables:
 # - EMAIL_DOMAIN
 
-port: 25
+port: 587
 protocol: tcp4
 
 read_timeout: 60s
@@ -9,6 +9,12 @@ write_timeout: 60s
 data_timeout: 5m
 max_message_size: 10240000
 max_recipients: 100
+
+auth_credentials: ${CREDENTIALS_FILE} 
+
+tls:
+  certificate_path: ${TLS_CERTIFICATE_PATH}
+  key_path: ${TLS_KEY_PATH}
 
 dkim:
   selector: dkim2

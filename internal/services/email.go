@@ -13,3 +13,8 @@ type EmailSender interface {
 type EmailReciever interface {
 	HandleMessage(ctx context.Context, message *models.Envelope)
 }
+
+type EmailAuthHandler interface {
+	Authenticate(ctx context.Context, username, password string) bool
+}
+

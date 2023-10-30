@@ -3,11 +3,13 @@ package auth
 import (
 	"context"
 	"crypto/rsa"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/jhamill34/notion-provisioner/internal/config"
 	"github.com/jhamill34/notion-provisioner/internal/database"
@@ -82,7 +84,23 @@ func Configure() *Auth {
 	)
 
 	smtpAddr := fmt.Sprintf("%s:%d", cfg.Email.SmtpDomain, cfg.Email.SmtpPort)
-	emailService := email.NewSmtpSender(smtpAddr, cfg.Email.User.String(), cfg.Email.Domain.String())
+
+	smtpCredentials := strings.Split(cfg.Email.SmtpCredentials.String(), ":")
+	if len(smtpCredentials) != 2 {
+		panic("Invalid email credentials in configuration")
+	}
+
+	emailService := email.NewSmtpSender(
+		smtpAddr,
+		smtpCredentials[0],
+		smtpCredentials[1],
+		cfg.Email.User.String(),
+		cfg.Email.Domain.String(),
+		&tls.Config{
+			ServerName: cfg.Email.SmtpDomain.String(),
+			InsecureSkipVerify: true,
+		},
+	)
 
 	userDao := dao.NewUserDao(db)
 	authRepo := repositories.NewAuthRepository(
@@ -99,7 +117,10 @@ func Configure() *Auth {
 	appDao := dao.NewApplicationDao(db)
 	orgDao := dao.NewOrganizationDao(db)
 
-	publisher := database.NewRedisPublisherProvider(cfg.PubSub.Addr.String(), cfg.PubSub.Password.String())
+	publisher := database.NewRedisPublisherProvider(
+		cfg.PubSub.Addr.String(),
+		cfg.PubSub.Password.String(),
+	)
 	permissionModel := config.LoadRbacModel(os.Getenv("RBAC_MODEL_FILE"))
 	policyProvider := rbac.NewDatabasePolicyProvider(userDao, orgDao)
 	accessControlService := rbac.NewCasbinAccessControl(

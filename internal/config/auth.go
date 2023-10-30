@@ -30,10 +30,11 @@ type HashParams struct {
 }
 
 type EmailParams struct {
-	Domain     StringFromEnv `yaml:"domain"`
-	User       StringFromEnv `yaml:"user"`
-	SmtpDomain StringFromEnv `yaml:"smtp_domain"`
-	SmtpPort   int           `yaml:"smtp_port"`
+	Domain          StringFromEnv  `yaml:"domain"`
+	User            StringFromEnv  `yaml:"user"`
+	SmtpDomain      StringFromEnv  `yaml:"smtp_domain"`
+	SmtpCredentials StringFromFile `yaml:"smtp_credentials"`
+	SmtpPort        int            `yaml:"smtp_port"`
 }
 
 type AccessTokenConfiguration struct {

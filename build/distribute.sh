@@ -23,7 +23,7 @@ for service in "${services[@]}"; do
 		docker tag "${service}:latest" "${uri}:latest"
 
 		echo "Pushing to ${uri}:latest ..."
-		docker push "${uri}:latest"
+		# docker push "${uri}:latest"
 	else
 		echo "ECR Repository doesn't exist"
 	fi

@@ -14,6 +14,7 @@ echo $DEFAULT_OAUTH_CLIENT_SECRET | docker secret create oauth_client_secret -
 echo $AUTH_TOKEN_SECRET | docker secret create auth_token_secret -
 echo $AUTH_SESSION_SECRET | docker secret create auth_session_secret -
 echo $APP_SESSION_SECRET | docker secret create app_session_secret -
+echo $EMAIL_CREDENTIALS | docker secret create email_credentials - 
 
 set +o allexport 
 
@@ -24,4 +25,7 @@ docker secret create dkim_private_key ./secrets/dkim-key.pem
 
 docker secret create ssl_public_key ./secrets/sslcert.pem
 docker secret create ssl_private_key ./secrets/sslkey.pem
+
+docker secret create mail_ssl_cert ./secrets/mailcert.pem
+docker secret create mail_ssl_key ./secrets/mailcert-key.pem
 

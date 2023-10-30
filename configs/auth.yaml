@@ -86,5 +86,6 @@ session:
 email:
   domain: ${EMAIL_DOMAIN}
   user: ${EMAIL_USER}
+  smtp_credentials: ${SMTP_CREDENTIALS_FILE}
   smtp_domain: ${SMTP_DOMAIN}
-  smtp_port: 25
+  smtp_port: 587
