@@ -61,7 +61,7 @@ services:
       options:
         awslogs-region: us-east-1
         awslogs-group: /aws/docker/${STACK_NAME}/auth_service
-        awslogs-create-group: true
+        awslogs-create-group: "true"
 
   
 
@@ -106,7 +106,7 @@ services:
       options:
         awslogs-region: us-east-1
         awslogs-group: /aws/docker/${STACK_NAME}/app_service
-        awslogs-create-group: true
+        awslogs-create-group: "true"
 
 
   gateway_service:
@@ -149,7 +149,7 @@ services:
       options:
         awslogs-region: us-east-1
         awslogs-group: /aws/docker/${STACK_NAME}/gateway_service
-        awslogs-create-group: true
+        awslogs-create-group: "true"
 
 
   email_service:
@@ -216,7 +216,7 @@ services:
       options:
         awslogs-region: us-east-1
         awslogs-group: /aws/docker/${STACK_NAME}/cache_store
-        awslogs-create-group: true
+        awslogs-create-group: "true"
 
 
   database_store:
@@ -260,7 +260,7 @@ services:
       options:
         awslogs-region: us-east-1
         awslogs-group: /aws/docker/${STACK_NAME}/database_store
-        awslogs-create-group: true
+        awslogs-create-group: "true"
 
 
   migration_service:
@@ -285,7 +285,7 @@ services:
       options:
         awslogs-region: us-east-1
         awslogs-group: /aws/docker/${STACK_NAME}/migration_service
-        awslogs-create-group: true
+        awslogs-create-group: "true"
 
   
 
@@ -323,7 +323,7 @@ services:
       options:
         awslogs-region: us-east-1
         awslogs-group: /aws/docker/${STACK_NAME}/proxy
-        awslogs-create-group: true
+        awslogs-create-group: "true"
 
 
 volumes:
