@@ -2,7 +2,7 @@ version: '3.7'
 
 services: 
   auth_service:
-    image: auth_service:latest
+    image: ${REGISTRY_ENDPOINT}/${STACK_NAME}/auth_service:latest
     environment:
       BASE_URL: "https://auth.${ROOT_DOMAIN}"
       CONFIG_FILE: /auth_config
@@ -134,7 +134,7 @@ services:
 
 
   email_service:
-    image: mailer:latest
+    image: ${REGISTRY_ENDPOINT}/${STACK_NAME}/mailer:latest
     environment:
       EMAIL_DOMAIN: ${ROOT_DOMAIN}
       CONFIG_FILE: /mail_config
