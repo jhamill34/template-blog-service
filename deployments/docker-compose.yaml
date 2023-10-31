@@ -7,7 +7,7 @@ services:
       BASE_URL: "https://auth.${ROOT_DOMAIN}"
       CONFIG_FILE: /auth_config
       RBAC_MODEL_FILE: /rbac_model_config
-      APP_SERVER_BASE_URL: "https://app.${ROOT_DOMAIN}"
+      APP_SERVER_BASE_URL: "https://blog.${ROOT_DOMAIN}"
       CACHE_ADDRESS: cache_store:6379
       CACHE_PASSWORD: /run/secrets/cache_password
       PUBSUB_ADDRESS: cache_store:6379
@@ -99,7 +99,7 @@ services:
   gateway_service:
     image: ${REGISTRY_ENDPOINT}/${STACK_NAME}/gateway_service:latest
     environment:
-      BASE_URL: "https://app.${ROOT_DOMAIN}"
+      BASE_URL: "https://blog.${ROOT_DOMAIN}"
       CONFIG_FILE: /gateway_config
       AUTH_SERVER_BASE_URL: "https://auth.${ROOT_DOMAIN}"
       INTERNAL_AUTH_SERVER_DOMAIN: auth_service
