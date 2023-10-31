@@ -17,10 +17,10 @@ type GatewayConfig struct {
 }
 
 type OauthConfig struct {
-	ClientID             StringFromEnv `yaml:"client_id"`
-	ClientSecret         StringFromEnv `yaml:"client_secret"`
-	RedirectAuthorizeUri StringFromEnv `yaml:"redirect_authorize_uri"`
-	TokenUri             StringFromEnv `yaml:"token_uri"`
+	ClientID             StringFromFile `yaml:"client_id"`
+	ClientSecret         StringFromFile `yaml:"client_secret"`
+	RedirectAuthorizeUri StringFromEnv  `yaml:"redirect_authorize_uri"`
+	TokenUri             StringFromEnv  `yaml:"token_uri"`
 }
 
 func LoadGatewayConfig(filename string) (GatewayConfig, error) {

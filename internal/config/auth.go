@@ -13,11 +13,11 @@ type User struct {
 }
 
 type App struct {
-	ClientId     StringFromEnv `yaml:"client_id"`
-	ClientSecret StringFromEnv `yaml:"client_secret"`
-	Name         string        `yaml:"name"`
-	Description  string        `yaml:"description"`
-	RedirectUri  StringFromEnv `yaml:"redirect_uri"`
+	ClientId     StringFromFile `yaml:"client_id"`
+	ClientSecret StringFromFile `yaml:"client_secret"`
+	Name         string         `yaml:"name"`
+	Description  string         `yaml:"description"`
+	RedirectUri  StringFromEnv  `yaml:"redirect_uri"`
 }
 
 type HashParams struct {
