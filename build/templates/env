@@ -1,0 +1,5 @@
+ROOT_DOMAIN=<Your domain name>
+AWS_REGION=<Region used for ECR>
+AWS_ACCESS_KEY_ID=<IAM User Key>
+AWS_SECRET_ACCESS_KEY=<IAM User Secret>
+

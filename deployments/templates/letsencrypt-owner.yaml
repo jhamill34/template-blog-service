@@ -1,0 +1,7 @@
+  email: {{ .Email }}
+  country: {{ .Country }}
+  organization: {{ .OrgName }}
+  locality: {{ .City }}
+  province: {{ .State }}
+  street_address: {{ .StreetAddress }}
+  postal_code: {{ .Zipcode }}

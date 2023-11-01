@@ -8,5 +8,5 @@ import (
 
 func main() {
 	ctx := context.Background()
-	api.Configure().Start(ctx)
+	app.Configure().Start(ctx)
 }

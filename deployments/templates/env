@@ -1,0 +1,3 @@
+ROOT_DOMAIN=<Your domain name>
+AUTH_DEFAULT_PASSWORD=password
+SMTP_DOMAIN=<DNS name of your SMTP server> 

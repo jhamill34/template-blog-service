@@ -1,8 +1,22 @@
+# For local development:
+# uncomment the block of code under the 
+# micro service that you're making changes to. 
+# This image comes from running 
+#   docker build . -f build/air/Dockerfile -t localdev:latest
+#
+# Air will be ran in a container and will reload when changes are made
+# (Note: This works best when developing one microservice at a time...)
+
+
 version: '3.7'
 
 services: 
   auth_service:
-    image: ${REGISTRY_ENDPOINT}/${STACK_NAME}/auth_service:latest
+    image: auth_service:latest
+    # image: localdev:latest
+    # command: ["auth"]
+    # volumes: 
+    #   - ../:/app
     environment:
       BASE_URL: "https://auth.${ROOT_DOMAIN}"
       CONFIG_FILE: /auth_config
@@ -43,30 +57,14 @@ services:
       - rbac_model_config
     networks:
       - main
-    deploy:
-      endpoint_mode: vip
-      replicas: 1
-      mode: replicated
-      resources:
-        reservations:
-          cpus: '0.25'
-          memory: 25M
-        # limits: {}
-      restart_policy:
-        condition: any
-        delay: 5s
-        max_attempts: 10
-    logging:
-      driver: awslogs
-      options:
-        awslogs-region: us-east-1
-        awslogs-group: /aws/docker/${STACK_NAME}/auth_service
-        awslogs-create-group: "true"
-
   
 
   app_service:
-    image: ${REGISTRY_ENDPOINT}/${STACK_NAME}/app_service:latest
+    image: app_service:latest
+    # image: localdev:latest
+    # command: ["app"]
+    # volumes: 
+    #   - ../:/app
     environment:
       BASE_URL: "https://api.${ROOT_DOMAIN}"
       CONFIG_FILE: /app_config
@@ -88,29 +86,13 @@ services:
       - rbac_model_config
     networks:
       - main
-    deploy:
-      endpoint_mode: vip
-      replicas: 1
-      mode: replicated
-      resources:
-        reservations:
-          cpus: '0.25'
-          memory: 25M
-        # limits: {}
-      restart_policy:
-        condition: any
-        delay: 5s
-        max_attempts: 10
-    logging:
-      driver: awslogs
-      options:
-        awslogs-region: us-east-1
-        awslogs-group: /aws/docker/${STACK_NAME}/app_service
-        awslogs-create-group: "true"
-
 
   gateway_service:
-    image: ${REGISTRY_ENDPOINT}/${STACK_NAME}/gateway_service:latest
+    image: gateway_service:latest
+    # image: localdev:latest
+    # command: ["gateway"]
+    # volumes: 
+    #   - ../:/app
     environment:
       BASE_URL: "https://blog.${ROOT_DOMAIN}"
       CONFIG_FILE: /gateway_config
@@ -131,31 +113,32 @@ services:
       - gateway_config
     networks:
       - main
-    deploy:
-      endpoint_mode: vip
-      replicas: 1
-      mode: replicated
-      resources:
-        reservations:
-          cpus: '0.25'
-          memory: 25M
-        # limits: {}
-      restart_policy:
-        condition: any
-        delay: 5s
-        max_attempts: 10
-    logging:
-      driver: awslogs
-      options:
-        awslogs-region: us-east-1
-        awslogs-group: /aws/docker/${STACK_NAME}/gateway_service
-        awslogs-create-group: "true"
 
-  # NOTE: email_service is taken out since sending mail from your own 
-  # relay in production is a HUGE pain. Fighting with port 25/587 isn't worth it.
+  email_service:
+    image: mailer:latest
+    # image: localdev:latest
+    # command: ["mail"]
+    # volumes: 
+    #   - ../:/app
+    environment:
+      EMAIL_DOMAIN: ${ROOT_DOMAIN}
+      CONFIG_FILE: /mail_config
+      DKIM_PRIVATE_KEY: /run/secrets/dkim_private_key
+      TLS_CERTIFICATE_PATH: /run/secrets/mail_ssl_cert
+      TLS_KEY_PATH: /run/secrets/mail_ssl_key
+      CREDENTIALS_FILE: /run/secrets/email_credentials
+    secrets:
+      - dkim_private_key
+      - mail_ssl_cert
+      - mail_ssl_key
+      - email_credentials
+    configs:
+      - mail_config
+    networks:
+      - main
 
   cache_store:
-    image: ${REGISTRY_ENDPOINT}/${STACK_NAME}/cache:latest
+    image: cache:latest
     environment:
       CACHE_PASSWORD: /run/secrets/cache_password
     secrets:
@@ -164,32 +147,9 @@ services:
       - main
     volumes:
       - cache_data:/data
-    deploy:
-      endpoint_mode: vip
-      replicas: 1
-      mode: replicated
-      resources:
-        reservations:
-          cpus: '0.25'
-          memory: 25M
-        # limits: {}
-      restart_policy:
-        condition: any
-        delay: 5s
-        max_attempts: 10
-      placement:
-        constraints:
-          - node.labels.cache == true
-    logging:
-      driver: awslogs
-      options:
-        awslogs-region: us-east-1
-        awslogs-group: /aws/docker/${STACK_NAME}/cache_store
-        awslogs-create-group: "true"
-
 
   database_store:
-    image: ${REGISTRY_ENDPOINT}/${STACK_NAME}/database:latest
+    image: database:latest
     environment:
       MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db_root_password
       MYSQL_DATABASE: datadb
@@ -200,40 +160,25 @@ services:
       DB_MIGRATOR_USER: migrator_user
       DB_MIGRATOR_PASSWORD_FILE: /run/secrets/db_migrator_password
     secrets:
-      - db_root_password
-      - db_app_password
-      - db_auth_password
-      - db_migrator_password
+      - source: db_root_password
+        target: db_root_password
+        mode: 0644
+      - source: db_app_password
+        target: db_app_password
+        mode: 0644
+      - source: db_auth_password
+        target: db_auth_password
+        mode: 0644
+      - source: db_migrator_password
+        target: db_migrator_password
+        mode: 0644
     networks:
       - main
     volumes:
       - database_data:/var/lib/mysql
-    deploy:
-      endpoint_mode: vip
-      replicas: 1
-      mode: replicated
-      resources:
-        reservations:
-          cpus: '0.25'
-          memory: 25M
-        # limits: {}
-      restart_policy:
-        condition: any
-        delay: 5s
-        max_attempts: 10
-      placement:
-        constraints:
-          - node.labels.database == true
-    logging:
-      driver: awslogs
-      options:
-        awslogs-region: us-east-1
-        awslogs-group: /aws/docker/${STACK_NAME}/database_store
-        awslogs-create-group: "true"
-
 
   migration_service:
-    image: ${REGISTRY_ENDPOINT}/${STACK_NAME}/migrator:latest
+    image: migrator:latest
     environment:
       CONFIG_FILE: /migrator_config
       DB_USER: migrator_user
@@ -245,21 +190,10 @@ services:
     secrets:
       - db_migrator_password
     configs:
-      - migrator_config
-    deploy:
-      restart_policy:
-        condition: none
-    logging:
-      driver: awslogs
-      options:
-        awslogs-region: us-east-1
-        awslogs-group: /aws/docker/${STACK_NAME}/migration_service
-        awslogs-create-group: "true"
-
-  
+      - migrator_config  
 
   proxy:
-    image: ${REGISTRY_ENDPOINT}/${STACK_NAME}/proxy:latest
+    image: proxy:latest
     ports:
       - "443:443"
     networks:
@@ -274,26 +208,6 @@ services:
     secrets:
       - ssl_public_key
       - ssl_private_key
-    deploy:
-      endpoint_mode: vip
-      replicas: 1
-      mode: replicated
-      resources:
-        reservations:
-          cpus: '0.25'
-          memory: 25M
-        # limits: {}
-      restart_policy:
-        condition: any
-        delay: 5s
-        max_attempts: 10
-    logging:
-      driver: awslogs
-      options:
-        awslogs-region: us-east-1
-        awslogs-group: /aws/docker/${STACK_NAME}/proxy
-        awslogs-create-group: "true"
-
 
 volumes:
   database_data:
@@ -301,51 +215,70 @@ volumes:
 
 networks:
   main:
-    driver: overlay
+    driver: bridge 
 
 configs:
   auth_config:
-    external: true
+    file: ../configs/auth.yaml
   app_config:
-    external: true
+    file: ../configs/app.yaml
   gateway_config:
-    external: true
+    file: ../configs/gateway.yaml
+  mail_config:
+    file: ../configs/mail.yaml
   migrator_config:
-    external: true
+    file: ../configs/migrator.yaml
   rbac_model_config:
-    external: true
+    file: ../configs/rbac_model.conf
 
 secrets:
+  # Place values for these in an environment file and 
+  # provide that file in the compose up execution
   db_root_password:
-    external: true
+    environment: "DB_ROOT_PASSWORD"
   db_auth_password:
-    external: true
+    environment: "DB_AUTH_PASSWORD"
   db_app_password:
-    external: true
+    environment: "DB_APP_PASSWORD"
   db_migrator_password:
-    external: true
+    environment: "DB_MIGRATOR_PASSWORD"
   cache_password:
-    external: true
+    environment: "CACHE_PASSWORD"
   oauth_client_id:
-    external: true
+    environment: "DEFAULT_OAUTH_CLIENT_ID"
   oauth_client_secret:
-    external: true
+    environment: "DEFAULT_OAUTH_CLIENT_SECRET"
   auth_token_secret:
-    external: true
+    environment: "AUTH_TOKEN_SECRET"
   auth_session_secret:
-    external: true
+    environment: "AUTH_SESSION_SECRET"
   app_session_secret:
-    external: true
-  access_token_public_key:
-    external: true
-  access_token_private_key:
-    external: true
-  dkim_private_key:
-    external: true
-  ssl_public_key:
-    external: true
-  ssl_private_key:
-    external: true
+    environment: "APP_SESSION_SECRET"
   email_credentials:
-    external: true
+    environment: "EMAIL_CREDENTIALS"
+
+  # Use the script in ./deployment/generate_key_pair.sh token
+  # To create thse, openssl can also be used since its generic rsa keypairs
+  access_token_public_key:
+    file: ../secrets/token.pem
+  access_token_private_key:
+    file: ../secrets/token-key.pem
+
+  # Use the script in ./deployment/generate_key_pair.sh dkim
+  # to create this file, the DNS record will also generate
+  dkim_private_key:
+    file: ../secrets/dkim-key.pem
+
+  # Use the script in ./deployment/generate_ssl_cert.sh 
+  # to create these
+  ssl_public_key:
+    file: ../secrets/sslcert.pem
+  ssl_private_key:
+    file: ../secrets/sslkey.pem
+
+  # Use mkcert or openssl to create these files
+  mail_ssl_cert:
+    file: ../secrets/mailcert.pem
+  mail_ssl_key: 
+    file: ../secrets/mailcert-key.pem
 
