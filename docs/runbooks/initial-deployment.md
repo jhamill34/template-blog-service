@@ -58,6 +58,13 @@ These permissions will allow you to fetch your published containers and write lo
 
 Tag one of the instances as `Main` and the rest as `Workers`
 
+Make sure to also setup the cloudwatch agent to monitor the EC2 resource 
+
+```bash 
+sudo yum install amazon-cloudwatch-agent
+sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-config-wizard 
+sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/bin/config.json
+```
 
 Use the following to get the IP addresses for your nodes
 
