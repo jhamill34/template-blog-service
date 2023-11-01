@@ -185,6 +185,8 @@ services:
       DB_PASSWORD: /run/secrets/db_migrator_password
       DB_HOST: database_store
       DB_NAME: datadb
+    volumes: 
+      - ../migrations:/app/migrations
     networks:
       - main
     secrets:
